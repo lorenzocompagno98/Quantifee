@@ -2,7 +2,7 @@
 <html lang="it">
 <head>
 <meta charset="UTF-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-inline' https://gc.zgo.at; style-src 'unsafe-inline'; img-src data: https://lorenzocompagno.goatcounter.com; connect-src 'self' https://lorenzocompagno.goatcounter.com; form-action 'none'; base-uri 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-inline'; style-src 'unsafe-inline'; img-src data: https://lorenzocompagno.goatcounter.com; connect-src 'self'; form-action 'none'; base-uri 'none'">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%231a1a18'/%3E%3Ccircle cx='28' cy='28' r='18' fill='none' stroke='%235DCAA5' stroke-width='5'/%3E%3Cline x1='42' y1='42' x2='55' y2='55' stroke='%235DCAA5' stroke-width='7' stroke-linecap='round'/%3E%3Crect x='17' y='20' width='22' height='4.5' rx='2.25' fill='%23fff'/%3E%3Crect x='17' y='28' width='15' height='4.5' rx='2.25' fill='%23fff'/%3E%3Crect x='17' y='36' width='8' height='4.5' rx='2.25' fill='%235DCAA5'/%3E%3C/svg%3E">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Quantifee — Quanto ti costa la tua banca?</title>
@@ -460,7 +460,6 @@ details.q-det>div{padding:0 1.2rem 1.1rem}
 #wealth-chart-total>svg,#wealth-chart-cash>svg,#wealth-chart-invest>svg,#sim-chart>svg{min-width:760px}
 
 </style>
-<script data-goatcounter="https://lorenzocompagno.goatcounter.com/count" async src="https://gc.zgo.at/count.js"></script>
 </head>
 <body>
 
@@ -876,7 +875,7 @@ fileInput.addEventListener('change',e=>addFiles([...e.target.files]))
 function addFiles(files){files.forEach(f=>{if(!pendingFiles.find(p=>p.name===f.name))pendingFiles.push(f)});renderChips();track('file_caricato',{n:files.length})}
 function renderChips(){
   const el=document.getElementById('files-added');if(!pendingFiles.length){el.innerHTML='';return}
-  el.innerHTML=pendingFiles.map((f,i)=>`<div class="file-chip"><span>📄 ${f.name}</span><button onclick="rmFile(${i})">✕</button></div>`).join('')+
+  el.innerHTML=pendingFiles.map((f,i)=>`<div class="file-chip"><span>📄 ${esc(f.name)}</span><button onclick="rmFile(${i})">✕</button></div>`).join('')+
     `<button class="analyze-btn" onclick="runAnalysis()">Analizza ${pendingFiles.length===1?'il file':pendingFiles.length+' file'} →</button>`
 }
 function rmFile(i){pendingFiles.splice(i,1);renderChips()}
@@ -1763,9 +1762,9 @@ function renderCharts(){
       return`<g>
         <rect x="${r.x}" y="${r.y}" width="${rw}" height="${rh}" fill="${r.color}" rx="3"/>
         <clipPath id="cp${i}"><rect x="${r.x+2}" y="${r.y+2}" width="${Math.max(rw-4,0)}" height="${Math.max(rh-4,0)}"/></clipPath>
-        ${showName?`<text clip-path="url(#cp${i})" x="${r.x+6}" y="${r.y+16}" font-size="11" fill="${tc}" font-family="-apple-system,sans-serif" font-weight="500">${r.name}</text>`:''}
+        ${showName?`<text clip-path="url(#cp${i})" x="${r.x+6}" y="${r.y+16}" font-size="11" fill="${tc}" font-family="-apple-system,sans-serif" font-weight="500">${esc(r.name)}</text>`:''}
         ${showAmt?`<text clip-path="url(#cp${i})" x="${r.x+6}" y="${r.y+30}" font-size="10" fill="${tc2}" font-family="-apple-system,sans-serif">€${Math.round(r.value).toLocaleString('it-IT')} · ${pct}%</text>`:''}
-        <title>${r.name}: €${Math.round(r.value).toLocaleString('it-IT')} (${pct}%)</title>
+        <title>${esc(r.name)}: €${Math.round(r.value).toLocaleString('it-IT')} (${pct}%)</title>
       </g>`}).join('')
     document.getElementById('waffle-wrap').innerHTML=
       `<svg width="100%" viewBox="0 0 ${TW} ${TH}" xmlns="http://www.w3.org/2000/svg" style="display:block;border-radius:6px">${svgContent}</svg>`
@@ -2031,8 +2030,8 @@ function renderTxTable(filter){
   document.getElementById('tx-body').innerHTML=rows.map((t,i)=>{
     const txIdx=idxMap[i],editable=!t.isInternal
     const catHtml=editable
-      ?`<span class="cat-chip" onclick="openPicker(${txIdx})"><span>${t.catIcon||'💳'}</span>${t.catLabel||t.cat||'—'}<span class="edit-hint">✏</span></span>`
-      :`<span>${t.catIcon||'💳'} ${t.catLabel||t.cat||'—'}</span>`
+      ?`<span class="cat-chip" onclick="openPicker(${txIdx})"><span>${t.catIcon||'💳'}</span>${esc(t.catLabel||t.cat||'—')}<span class="edit-hint">✏</span></span>`
+      :`<span>${t.catIcon||'💳'} ${esc(t.catLabel||t.cat||'—')}</span>`
     const note=t.isInternal?'<span class="dedup-badge">Interno</span>':
                t.isCommission?`<span class="comm-badge">${t.commEvit?'Evitabile':'Tassa'}</span>`:
                t.catType==='investment'?'<span class="inv-badge">Investimento</span>':''
@@ -2040,7 +2039,7 @@ function renderTxTable(filter){
     const bnk={intesa:'Intesa',tr:'Trade Republic',revolut:'Revolut',unicredit:'UniCredit'}
     return`<tr>
       <td style="color:var(--ink-ter);white-space:nowrap">${fmtDate(t.date)}</td>
-      <td><div style="font-weight:500;font-size:12px">${(t.detail||t.op).slice(0,50)}</div></td>
+      <td><div style="font-weight:500;font-size:12px">${esc((t.detail||t.op).slice(0,50))}</div></td>
       <td style="font-size:11px;color:var(--ink-ter);white-space:nowrap">${bnk[t.source]||t.source}</td>
       <td>${catHtml}</td>
       <td style="text-align:right;font-weight:500;color:${t.amount>=0?'var(--teal)':'var(--ink)'};white-space:nowrap">${sg(t.amount,2)}</td>
@@ -2562,14 +2561,18 @@ function trackOff(){
     return location.protocol==='file:'||/^(localhost|127\.|\[::1\])/.test(location.hostname)||localStorage.getItem('bc_notrack')==='1'
   }catch(e){return location.protocol==='file:'}
 }
-function track(ev,props){
-  if(trackOff())return
+// Contatore senza script di terzi: la pagina chiede a GoatCounter un'immagine di 1 pixel, con nel link solo il nome della pagina o dell'evento.
+// Nessun dato dei file o dei saldi viene mai inserito nel link.
+const GC_URL='https://lorenzocompagno.goatcounter.com/count'
+function gcPixel(path,title,isEvent){
   try{
-    if(window.umami&&typeof umami.track==='function')umami.track(ev,props)
-    else if(typeof window.plausible==='function')window.plausible(ev,{props})
-    else if(window.goatcounter&&typeof goatcounter.count==='function')goatcounter.count({path:'evento/'+ev,title:ev,event:true})
+    const i=new Image()
+    i.referrerPolicy='origin'
+    i.src=GC_URL+'?p='+encodeURIComponent(path)+'&t='+encodeURIComponent(title||path)+(isEvent?'&e=1':'')+'&rnd='+Math.random().toString(36).slice(2)
   }catch(e){}
 }
+function track(ev){ if(!trackOff())gcPixel('evento/'+ev,ev,true) }
+window.addEventListener('load',()=>{ if(!trackOff())gcPixel(location.pathname||'/','Quantifee',false) })
 
 // ─── TARIFFE E CONFRONTO ──────────────────────────
 // Dati incorporati (funziona anche aprendo il file in locale). Se il sito pubblica tariffe.json, quello ha la precedenza.
