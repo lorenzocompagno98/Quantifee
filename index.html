@@ -429,6 +429,10 @@ details.q-det>div{padding:0 1.2rem 1.1rem}
 .q-grp li{display:grid;grid-template-columns:3rem 1fr auto;gap:.5rem;padding:.25rem 0;font-size:13px;align-items:baseline}
 .q-grp li .t em{display:block;font-style:normal;font-size:12px;color:var(--ink-sec)}
 .q-grp-none{color:var(--ink-ter);padding:.4rem 0}
+.q-mbtn{background:none;border:0;padding:0;font:inherit;color:inherit;cursor:pointer;text-decoration:underline dotted var(--ink-ter);text-underline-offset:3px}
+.q-mbtn:hover{color:var(--blue,#2B59C3)}
+.q-table tr.sel td{background:#EAF1FB}
+.q-tm-sel{display:flex;gap:.6rem;align-items:center;flex-wrap:wrap;margin:0 0 .8rem}
 .q-drill-h{font-weight:700;margin-bottom:.4rem}
 .q-drill ul{list-style:none;margin-bottom:.8rem}
 .q-drill li{display:grid;grid-template-columns:3.2rem 1fr auto;gap:.6rem;padding:.4rem 0;border-bottom:1px solid var(--border);align-items:baseline}
@@ -625,13 +629,13 @@ details.q-det>div{padding:0 1.2rem 1.1rem}
       <div class="q-table-wrap tall"><table class="q-table" id="fl-table"></table></div>
       <p class="q-note" id="fl-note"></p>
 
-      <h3>Dove vanno le spese</h3>
-      <p class="q-lead" style="margin-bottom:.9rem">Ogni rettangolo è una categoria: più è grande, più pesa. Segue il periodo scelto qui sopra e le uscite totali coincidono con quelle della tabella mensile.</p>
+      <h3 id="tm-title">Dove vanno le spese</h3>
+      <p class="q-lead" style="margin-bottom:.9rem" id="tm-lead">Ogni rettangolo è una categoria: più è grande, più pesa. Segue il periodo scelto qui sopra e le uscite totali coincidono con quelle della tabella mensile.</p>
       <div class="q-tm">
         <div id="waffle-wrap"></div>
         <div>
           <ul class="q-tm-list" id="tm-list"></ul>
-          <div class="q-tm-tot"><span>Uscite nel periodo</span><span id="treemap-total"></span></div>
+          <div class="q-tm-tot"><span id="tm-totlbl">Uscite nel periodo</span><span id="treemap-total"></span></div>
         </div>
       </div>
 
@@ -1548,7 +1552,7 @@ function renderCharts(){
 
   if(!_lastData)return
   const ptx=getPeriodTx()
-  const pExp=ptx.filter(t=>t.amount<0&&t.catType!=='investment'&&t.catType!=='disinvestment')
+  const pExp=ptx.filter(t=>t.amount<0&&t.catType!=='investment'&&t.catType!=='disinvestment'&&(!window.tmMonth||ymOf(t.date)===window.tmMonth))
   const pInv=ptx.filter(t=>t.amount<0&&t.catType==='investment')
   const totalInvestedP=pInv.reduce((s,t)=>s+Math.abs(t.amount),0)
 
@@ -2296,7 +2300,21 @@ function recalcImplicit(){if(_lastData)renderBills(_lastData)}
 const _rb=renderBills;renderBills=function(d){_rb(d);renderLiqCompare(d)}
 
 // ─── MESE PER MESE ────────────────────────────────
+window.tmMonth=null
+function pickTmMonth(ym){
+  window.tmMonth=(window.tmMonth===ym?null:ym)
+  renderCharts()
+  const e=document.getElementById('tm-title');if(e)e.scrollIntoView({block:'nearest',behavior:'smooth'})
+}
+function tmUpdateLabels(){
+  const lead=document.getElementById('tm-lead'),lbl=document.getElementById('tm-totlbl'),m=window.tmMonth
+  if(lbl)lbl.textContent=m?'Uscite di '+ymName(m):'Uscite nel periodo'
+  if(lead)lead.innerHTML=m
+    ?`Stai vedendo solo le spese di <b>${ymName(m)}</b>. <button class="q-btn" onclick="pickTmMonth('${m}')">Torna a tutto il periodo</button>`
+    :'Ogni rettangolo è una categoria: più è grande, più pesa. Segue il periodo scelto qui sopra e le uscite totali coincidono con quelle della tabella mensile. <b>Tocca il nome di un mese nella tabella</b> per vedere solo le sue spese.'
+}
 function renderFlussi(){
+  tmUpdateLabels()
   const ptx=getPeriodTx(),rows=monthRows(ptx),base=partialSet(),part=Object.assign({},base)
   // anche il filtro periodo può tagliare un mese a metà
   let pf=customFrom,pt=customTo
@@ -2319,7 +2337,7 @@ function renderFlussi(){
   const bigOf=(ym)=>{const m=maxOf(ym);return rows.length>2&&m>=200&&m>=medMax*1.5}
   const sum=k=>rows.reduce((s,r)=>s+r[k],0)
   t.innerHTML=`<thead><tr><th>Mese</th><th>Entrate</th><th>Uscite</th><th>Parziale<small>entrate − uscite</small></th><th>Investimenti<small>acquisti − riscatti</small></th><th>Totale<small>variazione della liquidità</small></th></tr></thead><tbody>`+
-    rows.map(r=>`<tr${part[r.ym]?' class="part"':''}><td><button class="q-exp" onclick="toggleMonth('${r.ym}',this)" aria-expanded="false" aria-label="Mostra le operazioni più pesanti di ${ymName(r.ym)}">+</button>${ymName(r.ym)}${part[r.ym]?'<span class="q-tag">parziale</span>':''}${bigOf(r.ym,r)?'<span class="q-tag q-flag">spesa grande</span>':''}</td>
+    rows.map(r=>`<tr class="${part[r.ym]?'part ':''}${window.tmMonth===r.ym?'sel':''}"><td><button class="q-exp" onclick="toggleMonth('${r.ym}',this)" aria-expanded="false" aria-label="Mostra il dettaglio di ${ymName(r.ym)}">+</button><button class="q-mbtn" onclick="pickTmMonth('${r.ym}')" title="Vedi solo le spese di questo mese nel grafico a rettangoli">${ymName(r.ym)}</button>${part[r.ym]?'<span class="q-tag">parziale</span>':''}${bigOf(r.ym,r)?'<span class="q-tag q-flag">spesa grande</span>':''}</td>
       <td>${fmt(r.in)}</td><td>${fmt(r.out)}</td>
       <td class="${cls(r.par)}">${sg(r.par)}</td>
       <td class="q-inv">${r.net===0?'<span class="q-mute">—</span>':sg(-r.net)}</td>
@@ -2532,6 +2550,8 @@ function setChartDescs(liqAnch,invAnch){
   if(a)a.textContent=liqAnch?'Saldo di fine mese di tutti i tuoi conti, ricostruito partendo dal saldo di liquidità che hai inserito. Le barre sono la variazione del mese.':'Di quanto è cambiata la liquidità dei tuoi conti, mese dopo mese. La linea parte da zero all\'inizio del periodo: inserisci i saldi nella sezione Patrimonio per vedere il saldo vero.'
   if(b)b.textContent=invAnch?'Barre in su: acquisti. Barre in giù: riscatti e vendite. La linea è il totale investito a fine mese, al costo, ricostruito dal saldo che hai inserito.':'Barre in su: acquisti. Barre in giù: riscatti e vendite. La linea è il netto investito nel periodo, parte da zero: inserisci i saldi nella sezione Patrimonio per vedere il totale.'
 }
+
+;(function(){['setPeriod','setCustomRange','clearCustomRange'].forEach(n=>{const f=window[n];if(typeof f==='function')window[n]=function(){window.tmMonth=null;return f.apply(this,arguments)}})})()
 
 // ─── ANALYTICS (nessun dato bancario: solo nomi di evento) ───
 // Il contatore NON conta: file aperti in locale (file://), localhost, né i tuoi test se apri il sito una volta con ?notrack=1 (?notrack=0 per riattivarlo).
