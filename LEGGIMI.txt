@@ -1,0 +1,18 @@
+QUANTIFEE - cartella del sito
+=============================
+Contenuto:
+  index.html     la pagina (aprila con doppio clic per provarla in locale, funziona anche senza internet dopo il caricamento)
+  tariffe.json   le tariffe delle banche (se è accanto a index.html, il sito usa questo; altrimenti usa quelle incorporate)
+  libs/          le due librerie (lettura file Excel/CSV e grafici), incluse per non scaricarle da altri siti
+
+Per pubblicare su GitHub Pages: carica TUTTA la cartella (compresa libs/) nel repository e attiva Pages.
+
+Prima di collegare il contatore (Umami/Plausible/GoatCounter):
+  1. incolla il suo script al posto del commento "ANALYTICS" in index.html
+  2. in index.html, nella riga <meta http-equiv="Content-Security-Policy" ...>, aggiungi il dominio del servizio
+     sia a script-src sia a connect-src. Senza questo passaggio il browser blocca il contatore.
+  3. apri il sito pubblicato una volta con ?notrack=1 (dal tuo computer e dal telefono) per non contare i tuoi test.
+
+Se il codice è pubblico: in index.html imposta REPO_URL con l'indirizzo del repository; comparirà nel pannello "Come verifico".
+
+Licenze librerie: xlsx (SheetJS) Apache-2.0, Chart.js MIT.

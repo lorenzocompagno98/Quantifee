@@ -1,0 +1,164 @@
+{
+  "versione": "2026-10-02",
+  "avviso": "Tariffe pubbliche dei piani consumer, lette dai fogli informativi ufficiali. Dati indicativi: verifica sempre sul sito della banca. null = dato non verificato o non confrontabile.",
+  "banche": {
+    "intesa": {
+      "nome": "Intesa Sanpaolo",
+      "piano_default": "xme",
+      "piani": {
+        "xme": {
+          "nome": "XME Conto",
+          "canone_mese": 8.5,
+          "canone_nota": "€3 di sconto con accredito stipendio o pensione; €8,50 di sconto con alcuni prodotti collegati",
+          "bonifico_online": 0,
+          "bonifico_sportello": 0,
+          "atm_altra_banca": 0,
+          "atm_nota": "€0 secondo il documento; esistono forfait opzionali a pagamento",
+          "ricarica_prepagata": null,
+          "ricarica_nota": "Il documento indica €0 ma negli estratti la voce 'costo ricarica carta prepagata' compare a €1: non confrontabile",
+          "bollo_anno": 34.2,
+          "bollo_nota": "Non dovuto con giacenza media fino a €5.000",
+          "data_doc": "2026-07-01",
+          "fonte": "https://www.intesasanpaolo.com/content/dam/vetrina/trasparenza/it/Documenti/Doc/Pdf/FI/FI-Other/FI-1852.pdf",
+          "fonte2": "https://www.intesasanpaolo.com/content/dam/vetrina/trasparenza/it/Documenti/Doc/Pdf/FI/FI-Other/FI-1245.pdf"
+        },
+        "silver": {
+          "nome": "XME Conto Silver",
+          "canone_mese": 5.9,
+          "canone_nota": "Nessuna condizione di azzeramento indicata nel documento",
+          "bonifico_online": 1.2,
+          "bonifico_sportello": 3.5,
+          "atm_altra_banca": 2,
+          "atm_nota": "Bancomat altre banche area SEPA",
+          "ricarica_prepagata": null,
+          "bollo_anno": 34.2,
+          "bollo_nota": "Non dovuto con giacenza media fino a €5.000",
+          "data_doc": null,
+          "fonte": "https://www.intesasanpaolo.com/content/dam/vetrina/trasparenza/it/Documenti/Doc/Pdf/FI/FI-Other/FI-1841.pdf"
+        }
+      }
+    },
+    "unicredit": {
+      "nome": "UniCredit",
+      "piano_default": "genius",
+      "piani": {
+        "genius": {
+          "nome": "Genius",
+          "canone_mese": 1.9,
+          "canone_nota": "Azzerato con accredito mensile di stipendio, pensione o bonifico ricorrente da almeno €750",
+          "bonifico_online": 1.3,
+          "bonifico_online_nota": "Pacchetto bonifici illimitati: €2/mese",
+          "bonifico_sportello": 11.8,
+          "atm_altra_banca": 2,
+          "ricarica_prepagata": null,
+          "bollo_anno": null,
+          "data_doc": null,
+          "fonte": "https://trasparenza.unicredit.it/pdfprod/CC140_CONTO+CORRENTE+GENIUS+.pdf"
+        },
+        "care": {
+          "nome": "Genius Care",
+          "canone_mese": 4.9,
+          "canone_nota": "Azzerato con almeno €10.000 in prodotti di investimento della categoria gestito",
+          "bonifico_online": 0,
+          "bonifico_online_nota": "Compreso, ordinari e istantanei",
+          "bonifico_sportello": 11.05,
+          "atm_altra_banca": 2,
+          "ricarica_prepagata": null,
+          "bollo_anno": null,
+          "data_doc": "2026-10-01",
+          "fonte": "https://trasparenza.unicredit.it/pdfprod/FIDCC139_FID+CONTO+CORRENTE+Genius+Care.pdf",
+          "fonte2": "https://trasparenza.unicredit.it/pdfprod/CC139_CONTO+CORRENTE+GENIUS+CARE+GENIUS+CARE+TOP.pdf"
+        }
+      }
+    },
+    "revolut": {
+      "nome": "Revolut",
+      "piano_default": "standard",
+      "verificare": "La pagina commissioni indica canone gratuito per tutti i piani, la pagina dei piani indica i canoni qui riportati. Usata la pagina dei piani: da confermare.",
+      "piani": {
+        "standard": {
+          "nome": "Standard",
+          "canone_mese": 0,
+          "bonifico_online": 0,
+          "bonifico_sportello": null,
+          "atm_altra_banca": null,
+          "atm_nota": "Pagina commissioni: gratis fino a 5 prelievi o €200 al mese, poi 2% (min. €1); piano di riferimento non indicato",
+          "ricarica_prepagata": null,
+          "bollo_anno": null,
+          "data_doc": "2026-05-07",
+          "fonte": "https://www.revolut.com/it-IT/legal/standard-fees/",
+          "fonte2": "https://www.revolut.com/it-IT/our-pricing-plans/"
+        },
+        "plus": {
+          "nome": "Plus",
+          "canone_mese": 3.99,
+          "bonifico_online": 0,
+          "bonifico_sportello": null,
+          "atm_altra_banca": null,
+          "atm_nota": "Gratis fino a €200 o 5 prelievi al mese",
+          "ricarica_prepagata": null,
+          "bollo_anno": null,
+          "data_doc": null,
+          "fonte": "https://www.revolut.com/it-IT/our-pricing-plans/"
+        },
+        "premium": {
+          "nome": "Premium",
+          "canone_mese": 9.99,
+          "bonifico_online": 0,
+          "bonifico_sportello": null,
+          "atm_altra_banca": null,
+          "atm_nota": "Gratis fino a €400 al mese o 5 prelievi",
+          "ricarica_prepagata": null,
+          "bollo_anno": null,
+          "data_doc": null,
+          "fonte": "https://www.revolut.com/it-IT/our-pricing-plans/"
+        },
+        "metal": {
+          "nome": "Metal",
+          "canone_mese": 15.99,
+          "bonifico_online": 0,
+          "bonifico_sportello": null,
+          "atm_altra_banca": null,
+          "atm_nota": "Gratis fino a €800 o 5 prelievi al mese",
+          "ricarica_prepagata": null,
+          "bollo_anno": null,
+          "data_doc": null,
+          "fonte": "https://www.revolut.com/it-IT/our-pricing-plans/"
+        },
+        "ultra": {
+          "nome": "Ultra",
+          "canone_mese": 55,
+          "bonifico_online": 0,
+          "bonifico_sportello": null,
+          "atm_altra_banca": null,
+          "atm_nota": "Gratis fino a €2.000 al mese",
+          "ricarica_prepagata": null,
+          "bollo_anno": null,
+          "data_doc": null,
+          "fonte": "https://www.revolut.com/it-IT/our-pricing-plans/"
+        }
+      }
+    },
+    "tr": {
+      "nome": "Trade Republic",
+      "piano_default": "conto",
+      "piani": {
+        "conto": {
+          "nome": "Conto Trade Republic",
+          "canone_mese": 0,
+          "bonifico_online": 0,
+          "bonifico_sportello": null,
+          "atm_altra_banca": null,
+          "atm_nota": "Gratis da €100 in su, €1 sotto €100 (dipende dall'importo prelevato)",
+          "ricarica_prepagata": null,
+          "ordine_costo": 1,
+          "ordine_nota": "Nessuna commissione di negoziazione, più €1 di costi di regolamento esterno per ogni ordine",
+          "bollo_anno": null,
+          "data_doc": "2025-01-01",
+          "fonte": "https://assets.traderepublic.com/assets/files/FeeInformation_PaymentAccount_it.pdf",
+          "fonte2": "https://support.traderepublic.com/it-it/784-Are-there-commissions-for-order-execution"
+        }
+      }
+    }
+  }
+}
