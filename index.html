@@ -584,6 +584,7 @@ details.q-det>div{padding:0 1.2rem 1.1rem}
       <div class="alert a" id="confronto-avviso"></div>
       <div class="card" id="confronto-table"></div>
       <div class="card" id="confronto-canoni"></div>
+      <div class="card" id="liq-cmp"></div>
       <details class="q-det"><summary>Da dove vengono le tariffe</summary><div><div class="cmp-src" id="confronto-fonti"></div></div></details>
     </section>
 
@@ -744,7 +745,7 @@ const PARAMS={
   terFondi:   {v:2.20, label:'TER fondi correnti (%/anno)',  unit:'%',  note:'Es. Intesa Le23 ~2.2%', min:0, max:5,  step:0.05},
   terETF:     {v:0.15, label:'TER ETF alternativo (%/anno)', unit:'%',  note:'Es. iShares MSCI World 0.20%', min:0, max:2, step:0.05},
   saveback:   {v:1.00, label:'Saveback TR (%)',               unit:'%',  note:'1% su spese con carta TR', min:0, max:5, step:0.1},
-  cashRate:   {v:3.75, label:'Interesse liquidità TR (%/anno)',unit:'%', note:'Tasso attuale su saldo cash TR', min:0, max:10,step:0.25},
+  cashRate:   {v:3, label:'Interesse liquidità TR (%/anno)',unit:'%', note:'Tasso lordo pubblicato da Trade Republic', min:0, max:10,step:0.25},
   isaTradeFee:{v:3.90, label:'Commissione ETF Intesa (€/trade)',unit:'€',note:'InvestoPro Go su Borsa IT', min:0, max:20, step:0.5},
 }
 
@@ -2111,6 +2112,76 @@ function billHTML(o){
       ${o.after||''}
     </div></div>`
 }
+// saldo medio di liquidità di una banca: parte dal saldo inserito e torna indietro giorno per giorno
+function avgBalance(b,periodFrom,periodTo){
+  if(!(wealthCash[b]>=0)||wealthCash[b]==null)return null
+  const tx=allTx.filter(t=>t.source===b&&t.date instanceof Date).sort((x,y)=>x.date-y.date)
+  if(!tx.length)return null
+  const key=dt=>Math.floor(dt/864e5),byDay={}
+  tx.forEach(t=>{byDay[key(t.date)]=(byDay[key(t.date)]||0)+t.amount})
+  const last=key(tx[tx.length-1].date),first=key(tx[0].date)
+  const from=Math.max(first,key(periodFrom)),to=Math.max(from,Math.min(last,key(periodTo)))
+  let bal=wealthCash[b],sum=0,n=0
+  for(let k=last;k>=from;k--){ if(k<=to){sum+=bal;n++} bal-=(byDay[k]||0) }
+  return n?sum/n:null
+}
+// tassi pubblici sulla liquidità (lordi, annui). Verificati il 03/10/2026 sui siti ufficiali.
+const LIQ_RATES={
+  tr:{rate:3,cap:50000,note:'3% lordo fino a 50.000 €',src:'https://traderepublic.com/it-it/interesse'},
+  revolut:{rate:2,cap:3000,note:'fino al 2% lordo sui primi 3.000 € (piano Standard o Plus). Esiste una promo al 3,5% per i nuovi clienti per 4 mesi, non conteggiata',src:'https://www.revolut.com/it-IT/instant-access-savings/'},
+  intesa:{rate:0,cap:Infinity,note:'tasso non verificato: modificalo se il tuo conto rende qualcosa',src:'',edit:true},
+  unicredit:{rate:0,cap:Infinity,note:'tasso non verificato: modificalo se il tuo conto rende qualcosa',src:'',edit:true}
+}
+const LIQ_TAX=26
+function setLiqRate(b,v){const x=parseFloat(String(v).replace(',','.'));LIQ_RATES[b].rate=isNaN(x)?0:Math.max(0,x);if(_lastData)renderLiqCompare(_lastData)}
+function liqAnalysis(d){
+  const nm=b=>(typeof bn==='function'?bn(b):b)
+  const{periodFrom,periodTo}=d
+  const have=Object.keys(BANKS).filter(b=>wealthCash[b]!=null&&wealthCash[b]>=0)
+  const all0=have.map(b=>({b,v:avgBalance(b,periodFrom,periodTo)})).filter(x=>x.v!=null)
+  const parts=all0.filter(x=>x.v>0),bad=all0.filter(x=>x.v<=0)
+  const S=parts.reduce((t,x)=>t+x.v,0)
+  const missing=[...new Set(allTx.map(t=>t.source))].filter(b=>BANKS[b]&&!all0.some(x=>x.b===b))
+  if(!parts.length||S<=0)return null
+  const days=Math.max(1,Math.round((periodTo-periodFrom)/864e5)+1),f=365.25/days
+  // interessi davvero incassati = movimenti di interesse sul conto (non cedole o dividendi), meno la ritenuta trattenuta
+  const inP=t=>t.date>=periodFrom&&t.date<=periodTo&&!t.isInternal
+  const isInt=t=>t.amount>0&&/interess|interest/i.test((t.op||'')+' '+(t.cat||'')+' '+(t.detail||''))&&!/cedol|dividend/i.test((t.op||'')+' '+(t.cat||'')+' '+(t.detail||''))
+  const isWh=t=>t.commTipo==='ritenuta'&&/interessi/i.test(t.detail||'')
+  const earned=parts.map(x=>{
+    const tx=allTx.filter(t=>t.source===x.b&&inP(t))
+    const g=tx.filter(isInt).reduce((q,t)=>q+t.amount,0),w=tx.filter(isWh).reduce((q,t)=>q+Math.abs(t.amount),0)
+    return{b:x.b,avg:x.v,net:g-w}
+  })
+  const real=earned.reduce((q,x)=>q+x.net,0),realY=real*f
+  const rows=Object.keys(LIQ_RATES).map(b=>{
+    const r=LIQ_RATES[b],base=Math.min(S,r.cap),g=base*r.rate/100,n=g*(1-LIQ_TAX/100)
+    return{b,r,base,g,n}
+  })
+  const top=rows.reduce((m,x)=>x.n>m.n?x:m,rows[0]),gap=top.n-realY
+  return{S,parts,bad,missing,earned,real,realY,rows,top,gap,nm}
+}
+function renderLiqCompare(d){
+  const el=document.getElementById('liq-cmp');if(!el)return
+  const la=liqAnalysis(d)
+  if(!la){el.innerHTML='<h3>E la liquidità?</h3><p class="q-note">Per confrontare gli interessi inserisci il saldo di oggi dei tuoi conti nella sezione Patrimonio: serve per calcolare il tuo saldo medio.</p>';return}
+  const{S,bad,missing,earned,real,realY,rows,top,gap,nm}=la
+  const head=gap>0.5
+    ?`Con il tuo saldo medio di <b>${fmt(S)}</b>, tenendo tutto su <b>${esc(nm(top.b))}</b> avresti guadagnato circa <b>${fmt(top.n,0)} l'anno</b> di interessi netti. Ne hai incassati circa <b>${fmt(realY,0)} l'anno</b>: ti restano sul tavolo circa <b>${fmt(gap,0)} l'anno</b>.`
+    :`Con il tuo saldo medio di <b>${fmt(S)}</b>, gli interessi che incassi (circa <b>${fmt(realY,0)} l'anno</b> netti) sono già in linea con la banca migliore tra quelle confrontate: non lasci niente sul tavolo.`
+  el.innerHTML=`<h3>E la liquidità?</h3>
+  <p class="q-lead" style="margin-bottom:.8rem">${head}${gap>0.5?' Questa cifra è la voce <b>Interessi sulla liquidità</b> tra i costi nascosti, in <a href="#costi">Commissioni</a>.':''}</p>
+  <div class="q-table-wrap"><table class="q-table"><thead><tr><th>Dove tieni la liquidità</th><th>Saldo medio</th><th>Interessi incassati nel periodo (netti)</th></tr></thead><tbody>${
+   earned.map(x=>`<tr><td>${esc(nm(x.b))}</td><td>${fmt(x.avg)}</td><td>${fmt(x.net,2)}</td></tr>`).join('')}${missing.map(b=>`<tr><td>${esc(nm(b))}</td><td colspan="2" style="text-align:right">saldo non inserito: banca esclusa dal calcolo</td></tr>`).join('')}
+   <tr><td><b>Totale</b></td><td><b>${fmt(S)}</b></td><td><b>${fmt(real,2)}</b></td></tr></tbody></table></div>
+  ${missing.length?`<div class="alert a">Hai caricato anche i movimenti di ${esc(listIt(missing.map(nm)))}, ma non ne hai inserito il saldo nella sezione Patrimonio. Senza saldo non possiamo ricostruire quanto ci hai tenuto: quella banca non pesa nel confronto.</div>`:''}${bad.length?`<div class="alert a">Per ${esc(listIt(bad.map(nm)))} il saldo medio non si può calcolare: con il saldo inserito e i movimenti caricati il conto risulterebbe in negativo. Controlla il saldo inserito e che l'estratto sia completo. Quel conto è escluso dal calcolo.</div>`:''}
+  <p class="q-note">Gli interessi incassati sono quelli che trovi nei movimenti dei tuoi conti, meno la ritenuta. Se un conto non ne ha, sono 0. Cedole e dividendi non sono contati. Il saldo medio è ricostruito dai tuoi movimenti a partire dai saldi inseriti. Il confronto assume il ${LIQ_TAX}% di tassazione trattenuta dalla banca.</p>${bad.length?`<div class="alert a">Per ${esc(listIt(bad.map(x=>nm(x.b))))} il saldo medio non si può calcolare: con il saldo inserito e i movimenti caricati il conto risulterebbe in negativo. Controlla il saldo inserito e che l'estratto sia completo. Quel conto è escluso dal calcolo.</div>`:''}
+  <details class="q-det"><summary>Quanto renderebbe lo stesso saldo su ogni banca</summary><div>
+  <div class="q-table-wrap"><table class="q-table"><thead><tr><th>Banca</th><th>Tasso lordo</th><th>Importo che rende</th><th>Interessi lordi/anno</th><th>Interessi netti/anno</th></tr></thead><tbody>${
+   rows.map(x=>`<tr><td>${esc(nm(x.b))}</td><td>${x.r.edit?`<input type="number" step="0.25" min="0" value="${x.r.rate}" style="width:4.5rem" onchange="setLiqRate('${x.b}',this.value)" aria-label="Tasso lordo ${esc(nm(x.b))}"> %`:x.r.rate+'%'}</td><td>${fmt(x.base)}</td><td>${fmt(x.g,2)}</td><td><b>${fmt(x.n,2)}</b></td></tr>`).join('')}</tbody></table></div>
+  <ul class="q-note" style="margin-top:.7rem;padding-left:1.1rem">${rows.map(x=>`<li><b>${esc(nm(x.b))}</b>: ${esc(x.r.note)}${x.r.src?` · <a href="${x.r.src}" target="_blank" rel="noopener">fonte</a>`:''}</li>`).join('')}</ul>
+  <p class="q-note">I tassi sono variabili e cambiano nel tempo. Oltre l'importo che rende, qui non conteggiamo altri interessi. È una stima, non una promessa della banca.</p></div></details>`
+}
 function renderBills(d){
   const{comms,live,periodFrom,periodTo,totalFondi}=d
   const days=Math.max(1,Math.round((periodTo-periodFrom)/864e5)+1),f=365.25/days,nm=monthsSpan(periodFrom,periodTo)
@@ -2134,7 +2205,7 @@ function renderBills(d){
     after:lawTxt})
 
   // — implicite (stime annue) —
-  const pc=n=>String(n).replace('.',','),terF=getParam('terFondi'),terE=getParam('terETF'),sb=getParam('saveback'),cr=getParam('cashRate')
+  const pc=n=>String(n).replace('.',','),terF=getParam('terFondi'),terE=getParam('terETF'),sb=getParam('saveback')
   const imp=[]
   if(totalFondi>0){
     const a=totalFondi*(terF-terE)/100
@@ -2142,8 +2213,9 @@ function renderBills(d){
   }
   const cardSpend=live.filter(t=>t.amount<0&&t.catType==='expense'&&t.source==='intesa'&&!t.isCommission&&!/bonifico|addebito|f24|mav|rav|bolletta|affitto|utenz/i.test((t.op||'')+' '+(t.cat||''))).reduce((s,t)=>s+Math.abs(t.amount),0)
   if(cardSpend>0&&sb>0)imp.push({title:'Saveback che non ricevi',amt:cardSpend*f*sb/100,d:`Hai pagato circa <b>${fmt(cardSpend)}</b> con la carta Intesa nel periodo (≈ ${fmt(cardSpend*f)} l'anno, esclusi bonifici e addebiti). Una carta che restituisce il ${pc(sb)}% in investimenti, come quella di Trade Republic, te ne avrebbe dati indietro una parte.`})
-  const idleB=['intesa','unicredit'].filter(b=>wealthCash[b]>0),buf=idleB.reduce((s,b)=>s+wealthCash[b],0)
-  if(buf>0&&cr>0)imp.push({title:'Interessi sulla liquidità',amt:buf*cr/100,d:`Si basa sul saldo che hai inserito: <b>${fmt(buf)}</b> su ${esc(listIt(idleB.map(bn)))}. Se oggi quei conti non rendono nulla (ipotesi), uno al ${pc(cr)}% l'anno ti darebbe questa cifra.`})
+  const avgBal=b=>avgBalance(b,periodFrom,periodTo)
+  const la=liqAnalysis(d),buf=la?la.S:0
+  if(la&&la.gap>0.5)imp.push({title:'Interessi sulla liquidità non incassati',amt:la.gap,d:`Il tuo saldo medio è circa <b>${fmt(la.S)}</b>. Su <b>${esc(la.nm(la.top.b))}</b> ti avrebbe dato circa ${fmt(la.top.n,0)} l'anno netti: ne incassi circa ${fmt(la.realY,0)}. Il calcolo è spiegato in <a href="#liq-cmp">E la liquidità?</a>, nella sezione Altre banche.`})
   const isa=getParam('isaTradeFee')
   const tImp=imp.reduce((s,i)=>s+i.amt,0)
   document.getElementById('bill-imp').innerHTML=billHTML({imp:true,
@@ -2165,7 +2237,7 @@ function renderBills(d){
   </div>`
 }
 function renderParams(){
-  document.getElementById('params-grid').innerHTML=Object.entries(PARAMS).map(([k,p])=>
+  document.getElementById('params-grid').innerHTML=Object.entries(PARAMS).filter(([k])=>k!=='cashRate').map(([k,p])=>
     `<div class="param-item"><label for="p-${k}">${p.label}</label>
       <div class="param-input"><input type="number" id="p-${k}" value="${p.v}" min="${p.min}" max="${p.max}" step="${p.step}" onchange="recalcImplicit()"><span class="unit">${p.unit}</span></div>
       <span class="param-note">${p.note}</span></div>`).join('')
@@ -2176,6 +2248,7 @@ function toggleParams(){
   document.getElementById('params-btn').setAttribute('aria-expanded',open)
 }
 function recalcImplicit(){if(_lastData)renderBills(_lastData)}
+const _rb=renderBills;renderBills=function(d){_rb(d);renderLiqCompare(d)}
 
 // ─── MESE PER MESE ────────────────────────────────
 function renderFlussi(){
