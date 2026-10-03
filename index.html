@@ -413,6 +413,22 @@ details.q-det>div{padding:0 1.2rem 1.1rem}
 .q-flag{background:var(--amber-l);color:var(--amber)}
 .q-table tr.drill td{white-space:normal;text-align:left;background:#F6F8FA;padding:.8rem 1rem 1rem;position:static}
 .q-drill{max-width:760px}
+.q-drill{max-width:none}
+.q-blks{display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;margin-bottom:.6rem}
+@media(max-width:900px){.q-blks{grid-template-columns:1fr}}
+.q-blk{background:#fff;border:1px solid var(--border);border-radius:8px;padding:.6rem .8rem}
+.q-blk-h{display:flex;justify-content:space-between;padding-bottom:.4rem;border-bottom:2px solid var(--border);margin-bottom:.2rem}
+.q-grp summary,.q-grp-rest{display:grid;grid-template-columns:1fr auto auto;gap:.6rem;padding:.4rem 0;align-items:baseline;cursor:pointer;list-style:none}
+.q-grp-rest{cursor:default;color:var(--ink-sec)}
+.q-grp summary::-webkit-details-marker{display:none}
+.q-grp summary .g::before{content:"+ ";color:var(--ink-ter)}
+.q-grp[open] summary .g::before{content:"− "}
+.q-grp .n,.q-grp-rest .n{font-size:12.5px;color:var(--ink-ter)}
+.q-grp .a,.q-grp-rest .a,.q-blk-h .a{font-weight:700}
+.q-grp ul{list-style:none;margin:0 0 .4rem;padding:0 0 0 .9rem}
+.q-grp li{display:grid;grid-template-columns:3rem 1fr auto;gap:.5rem;padding:.25rem 0;font-size:13px;align-items:baseline}
+.q-grp li .t em{display:block;font-style:normal;font-size:12px;color:var(--ink-sec)}
+.q-grp-none{color:var(--ink-ter);padding:.4rem 0}
 .q-drill-h{font-weight:700;margin-bottom:.4rem}
 .q-drill ul{list-style:none;margin-bottom:.8rem}
 .q-drill li{display:grid;grid-template-columns:3.2rem 1fr auto;gap:.6rem;padding:.4rem 0;border-bottom:1px solid var(--border);align-items:baseline}
@@ -609,6 +625,16 @@ details.q-det>div{padding:0 1.2rem 1.1rem}
       <div class="q-table-wrap tall"><table class="q-table" id="fl-table"></table></div>
       <p class="q-note" id="fl-note"></p>
 
+      <h3>Dove vanno le spese</h3>
+      <p class="q-lead" style="margin-bottom:.9rem">Ogni rettangolo è una categoria: più è grande, più pesa. Segue il periodo scelto qui sopra e le uscite totali coincidono con quelle della tabella mensile.</p>
+      <div class="q-tm">
+        <div id="waffle-wrap"></div>
+        <div>
+          <ul class="q-tm-list" id="tm-list"></ul>
+          <div class="q-tm-tot"><span>Uscite nel periodo</span><span id="treemap-total"></span></div>
+        </div>
+      </div>
+
       <h3>In media, e i mesi migliori e peggiori</h3>
       <p class="q-lead" id="st-lead" style="margin-bottom:.9rem"></p>
       <div class="q-table-wrap"><table class="q-table" id="st-table"></table></div>
@@ -618,7 +644,7 @@ details.q-det>div{padding:0 1.2rem 1.1rem}
     <!-- 5. GRAFICI -->
     <section class="q-sec" id="grafici">
       <h2>Grafici</h2>
-      <p class="q-lead">Gli stessi numeri della tabella, nel tempo e per categoria. Seguono il periodo scelto qui sopra.</p>
+      <p class="q-lead">Gli stessi numeri della tabella, nel tempo. Seguono il periodo scelto in "Mese per mese".</p>
       <div class="q-kpis" id="invest-note" style="display:none"></div>
       <div class="q-charts">
         <div class="q-chart">
@@ -633,16 +659,6 @@ details.q-det>div{padding:0 1.2rem 1.1rem}
         </div>
       </div>
       <div id="invest-position" hidden></div>
-
-      <h3>Dove vanno le spese</h3>
-      <p class="q-lead" style="margin-bottom:.9rem">Ogni rettangolo è una categoria: più è grande, più pesa. Le uscite totali coincidono con quelle della tabella mensile.</p>
-      <div class="q-tm">
-        <div id="waffle-wrap"></div>
-        <div>
-          <ul class="q-tm-list" id="tm-list"></ul>
-          <div class="q-tm-tot"><span>Uscite nel periodo</span><span id="treemap-total"></span></div>
-        </div>
-      </div>
 
     </section>
 
@@ -1240,6 +1256,32 @@ function niceAxis(rawMin,rawMax,targetTicks){
   return{vMin,vMax,step,nTicks:Math.round((vMax-vMin)/step)}
 }
 
+// Tooltip al passaggio del mouse (o tocco) su un grafico SVG a colonne temporali.
+// cols: [{x (coordinata viewBox), head, rows:[{color,label,value,dash?}]}]
+function chartHover(el,cols){
+  const svg=el&&el.querySelector('svg');if(!svg||!cols.length)return
+  const vb=svg.viewBox.baseVal,W=vb.width,H=vb.height,NS='http://www.w3.org/2000/svg'
+  el.style.position='relative'
+  const ln=document.createElementNS(NS,'line');ln.setAttribute('y1',0);ln.setAttribute('y2',H)
+  ln.setAttribute('stroke','var(--ink-ter)');ln.setAttribute('stroke-width','1');ln.setAttribute('stroke-dasharray','3,3');ln.style.display='none';ln.style.pointerEvents='none'
+  svg.appendChild(ln)
+  const tip=document.createElement('div')
+  tip.style.cssText='position:absolute;top:6px;display:none;pointer-events:none;z-index:5;background:var(--bg,#fff);color:var(--ink,#111);border:1px solid var(--border-s,#ccc);border-radius:8px;padding:8px 10px;font-size:12px;line-height:1.45;box-shadow:0 4px 14px rgba(0,0,0,.14);min-width:150px'
+  el.appendChild(tip)
+  const hide=()=>{ln.style.display='none';tip.style.display='none'}
+  const show=e=>{
+    const r=svg.getBoundingClientRect();if(!r.width)return
+    const vx=(e.clientX-r.left)/r.width*W
+    let c=cols[0];for(const k of cols)if(Math.abs(k.x-vx)<Math.abs(c.x-vx))c=k
+    ln.setAttribute('x1',c.x);ln.setAttribute('x2',c.x);ln.style.display=''
+    tip.innerHTML='<div style="font-weight:600;margin-bottom:3px">'+c.head+'</div>'+c.rows.map(q=>'<div style="display:flex;align-items:center;gap:6px"><i style="width:9px;height:9px;border-radius:2px;background:'+q.color+';display:inline-block;flex:none"></i><span style="color:var(--ink-sec,#555)">'+q.label+'</span><b style="margin-left:auto;padding-left:12px;font-weight:600">'+q.value+'</b></div>').join('')
+    tip.style.display='block'
+    const er=el.getBoundingClientRect(),px=r.left-er.left+el.scrollLeft+c.x/W*r.width,tw=tip.offsetWidth
+    tip.style.left=Math.max(0,(px+14+tw>el.scrollWidth?px-tw-14:px+14))+'px'
+  }
+  svg.addEventListener('pointermove',show);svg.addEventListener('pointerdown',show);svg.addEventListener('pointerleave',hide)
+}
+
 // Renders an SVG line chart into containerEl for the given series.
 // series: [{key,label,color,points:[{date,value}],dashed?,bold?}]
 function renderLineChartSVG(containerEl,series,months){
@@ -1279,9 +1321,7 @@ function renderLineChartSVG(containerEl,series,months){
     const dash=s.dashed?' stroke-dasharray="5,4"':''
     lines+=`<path d="${path}" fill="none" stroke="${s.color}" stroke-width="${w}"${dash}/>`
     pts.forEach((p,i)=>{
-      lines+=`<circle cx="${x(i).toFixed(1)}" cy="${y(p.value).toFixed(1)}" r="${s.bold?3:2.5}" fill="${s.color}">
-        <title>${s.label} — ${String(p.date.getMonth()+1).padStart(2,'0')}/${p.date.getFullYear()}: ${fmtSigned(p.value)}</title>
-      </circle>`
+      lines+=`<circle cx="${x(i).toFixed(1)}" cy="${y(p.value).toFixed(1)}" r="${s.bold?3:2.5}" fill="${s.color}"/>`
     })
   })
 
@@ -1299,6 +1339,8 @@ function renderLineChartSVG(containerEl,series,months){
       ${gridLines}${gridLabels}${xLabels}${lines}
     </svg>
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:6px;margin-top:.75rem">${legend}</div>`
+  chartHover(containerEl,months.map((m,i)=>({x:x(i),head:String(m.getMonth()+1).padStart(2,'0')+'/'+m.getFullYear(),
+    rows:series.map(s=>({color:s.color,label:s.label,value:(s.calibrated?fmt(s.points[i].value):fmtSigned(s.points[i].value)+' (variazione)')}))})))
 }
 
 function renderWealthChart(){
@@ -1468,6 +1510,8 @@ function renderSimulation(){
       <span style="display:flex;align-items:center;gap:5px"><span style="width:14px;height:3px;background:var(--teal);display:inline-block;border-radius:2px"></span>Valore stimato</span>
       <span style="display:flex;align-items:center;gap:5px;color:var(--ink-ter)"><span style="width:14px;height:0;border-top:2px dashed var(--ink-ter);display:inline-block"></span>Capitale versato (senza rendimento)</span>
     </div>`
+  chartHover(chartEl,points.map((p,i)=>({x:x(i),head:p.month===0?'Oggi':(p.month/12)+(p.month===12?' anno':' anni'),
+    rows:[{color:'var(--teal)',label:'Valore stimato',value:fmt(p.value)},{color:'var(--ink-ter)',label:'Capitale versato',value:fmt(p.contributed)},{color:'var(--ink-ter)',label:'Rendimento',value:fmtSigned(p.value-p.contributed)}]})))
 
   // ── Table: key milestones ──
   const milestones=[1,3,5,10,20,30].filter(y=>y<=years)
@@ -2311,15 +2355,30 @@ function renderFlussi(){
     (onlyPartial?' <b>Ci sono solo mesi parziali: le medie sono poco affidabili.</b>':(pk.length?' I mesi parziali sono esclusi.':''))
 }
 
-// Dettaglio del mese: le operazioni più pesanti
+// Dettaglio del mese: tre blocchi (entrate, uscite, investimenti), le prime 3 voci per categoria, con le operazioni dentro
 function toggleMonth(ym,btn){
   const row=btn.closest('tr'),nx=row.nextElementSibling
   if(nx&&nx.classList.contains('drill')){nx.remove();btn.textContent='+';btn.setAttribute('aria-expanded','false');return}
-  const top=(_drill[ym]||[]).filter(x=>!x.isInternal).sort((a,b)=>Math.abs(b.amount)-Math.abs(a.amount)).slice(0,6)
+  const isInv=x=>x.catType==='investment'||x.catType==='disinvestment'
+  const tx=(_drill[ym]||[]).filter(x=>!x.isInternal)
+  const blocks=[
+    {t:'Entrate',cls:'q-pos',list:tx.filter(x=>x.amount>0&&!isInv(x))},
+    {t:'Uscite',cls:'q-neg',list:tx.filter(x=>x.amount<0&&!isInv(x))},
+    {t:'Investimenti',cls:'q-inv',list:tx.filter(isInv)}
+  ]
+  const opLi=x=>`<li><span class="d">${fmtDate(x.date).slice(0,5)}</span><span class="t">${esc(String(x.detail||x.op).slice(0,52))}<em>${esc(bn(x.source))}</em></span><span class="a">${sg(x.amount,2)}</span></li>`
+  const grpHTML=(g,cls)=>`<details class="q-grp"><summary><span class="g">${esc(g.k)}</span><span class="n">${g.n} ${plu(g.n,'operazione','operazioni')}</span><span class="a ${cls}">${sg(g.sum,2)}</span></summary><ul>${g.items.sort((p,q)=>Math.abs(q.amount)-Math.abs(p.amount)).map(opLi).join('')}</ul></details>`
+  const html=blocks.map(bk=>{
+    const m={};bk.list.forEach(x=>{const k=x.catLabel||x.cat||'Altro';const g=m[k]=m[k]||{k,n:0,sum:0,items:[]};g.n++;g.sum+=x.amount;g.items.push(x)})
+    const gs=Object.values(m).sort((p,q)=>Math.abs(q.sum)-Math.abs(p.sum))
+    const tot=bk.list.reduce((q,x)=>q+x.amount,0),top=gs.slice(0,3),rest=gs.slice(3)
+    const restSum=rest.reduce((q,g)=>q+g.sum,0),restN=rest.reduce((q,g)=>q+g.n,0)
+    return `<div class="q-blk"><div class="q-blk-h"><b>${bk.t}</b><span class="a ${bk.cls}">${bk.list.length?sg(tot,2):'—'}</span></div>${
+      bk.list.length?top.map(g=>grpHTML(g,bk.cls)).join('')+(rest.length?`<div class="q-grp-rest"><span class="g">Altre ${rest.length} ${plu(rest.length,'voce','voci')}</span><span class="n">${restN} ${plu(restN,'operazione','operazioni')}</span><span class="a">${sg(restSum,2)}</span></div>`:''):'<div class="q-grp-none">Nessuna operazione</div>'}</div>`
+  }).join('')
   const tr=document.createElement('tr');tr.className='drill'
-  tr.innerHTML=`<td colspan="6"><div class="q-drill"><div class="q-drill-h">Le operazioni più pesanti di ${ymName(ym)}</div><ul>${
-    top.map(x=>{const inv=x.catType==='investment'||x.catType==='disinvestment'
-      return `<li><span class="d">${fmtDate(x.date).slice(0,5)}</span><span class="t">${esc(String(x.detail||x.op).slice(0,48))}<em>${esc(x.catLabel||x.cat||'')}${inv?' · investimento':''} · ${esc(bn(x.source))}</em></span><span class="a ${inv?'q-inv':x.amount<0?'q-neg':'q-pos'}">${sg(x.amount,2)}</span></li>`}).join('')}</ul>
+  tr.innerHTML=`<td colspan="6"><div class="q-drill"><div class="q-drill-h">Cosa è successo a ${ymName(ym)}</div><div class="q-blks">${html}</div>
+    <p class="q-note" style="margin:.5rem 0 .7rem">Per ogni gruppo vedi le tre voci più pesanti, raggruppate per categoria. Tocca una voce per vedere le singole operazioni.</p>
     <button class="q-btn" onclick="showMonthTx('${ym}')">Vedi tutti i movimenti del mese</button></div></td>`
   row.after(tr);btn.textContent='−';btn.setAttribute('aria-expanded','true')
 }
