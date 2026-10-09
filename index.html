@@ -442,6 +442,12 @@ details.q-det>div{padding:0 1.2rem 1.1rem}
 .q-btn.q-btn-p{background:var(--ink,#0d1b26);color:#fff;border-color:var(--ink,#0d1b26)}
 .q-offline{margin:1rem auto 0;max-width:460px;padding:.7rem 1rem;border:1px solid var(--teal-m,#5dcaa5);border-radius:10px;background:rgba(93,202,165,.1);color:#fff;font-size:14px;line-height:1.45;text-align:center}
 .q-offline b{color:var(--teal-m,#5dcaa5)}
+.q-newfile-fb{background:var(--teal-m,#5dcaa5)!important;color:#0d1b26!important;border-color:var(--teal-m,#5dcaa5)!important;font-weight:600}
+@media(max-width:700px){.q-newfile.q-newfile-fb{display:inline-block;font-size:12px;padding:.35rem .6rem}.q-logo span{display:none}}
+@media(min-width:701px){.q-nav a{padding:.45rem .5rem;font-size:13px}.q-top-in{gap:.6rem}}
+@media(min-width:701px){.q-newfile{padding:.4rem .65rem}.q-nav a{padding:.45rem .42rem}}
+.q-newfile-fb{text-decoration:none;display:inline-block}
+@media(min-width:701px){.q-nav a{padding:.45rem .6rem;font-size:13.5px}.q-newfile{padding:.4rem .8rem}}
 
 .q-table-wrap.tall{max-height:700px;overflow:auto}
 .q-table-wrap.tall thead th{position:sticky;top:0;z-index:2}
@@ -593,14 +599,13 @@ details.q-det>div{padding:0 1.2rem 1.1rem}
         <a href="#ov">Panoramica</a>
         <a href="#patrimonio">Patrimonio</a>
         <a href="#costi">Commissioni</a>
-        <a href="#confronto-sec">Altre banche</a>
         <a href="#flussi">Mese per mese</a>
-        <a href="#grafici">Grafici</a>
         <a href="#previsioni">Evoluzione</a>
         <a href="#movimenti">Movimenti</a>
       </nav>
       <button class="q-newfile" onclick="resetTool()">Carica altri file</button>
-      <button class="q-newfile" onclick="wipeData()">Cancella i dati</button>
+      <button class="q-newfile" onclick="wipeData()" title="Cancella tutti i dati che hai caricato">Cancella i dati</button>
+      <a class="q-newfile q-newfile-fb" href="#" data-fb target="_blank" rel="noopener noreferrer" referrerpolicy="no-referrer" onclick="track('feedback_click_barra')">Feedback</a>
     </div>
   </header>
   <div class="q-demo" id="demo-banner" hidden><strong>Dati di esempio, inventati.</strong> Nessuno di questi movimenti è reale.<button onclick="resetTool()">Carica i tuoi file</button></div>
@@ -751,6 +756,12 @@ details.q-det>div{padding:0 1.2rem 1.1rem}
     </section>
 
     <!-- 7. MOVIMENTI -->
+    <div class="q-fb" id="feedback">
+        <h3>Com'è andata?</h3>
+        <p class="q-lead">Hai finito? Per prima cosa puoi cancellare tutti i dati che hai caricato: spariscono dalla pagina. Poi, quando vuoi, ti riconnetti a internet e ci dici cosa ne pensi. Il modulo è su un altro sito e non riceve nulla di ciò che hai caricato.</p>
+        <div class="q-fb-b"><button class="q-btn" onclick="wipeData()">1. Cancella tutti i dati</button><a class="q-btn q-btn-p" href="#" data-fb target="_blank" rel="noopener noreferrer" referrerpolicy="no-referrer" onclick="track('feedback_click')">2. Lascia un feedback</a></div>
+      </div>
+
     <section class="q-sec" id="movimenti">
       <h2>Tutti i movimenti</h2>
       <p class="q-lead">Se una categoria è sbagliata, toccala per correggerla: il calcolo si aggiorna. <span class="rules-badge" id="learned-badge" style="display:none">0 regole</span></p>
@@ -766,11 +777,6 @@ details.q-det>div{padding:0 1.2rem 1.1rem}
         <div class="card" id="dedup-table"></div>
       </div>
       <div class="q-end"><button class="q-btn" onclick="resetTool()">Carica altri file</button></div>
-      <div class="q-fb" id="feedback">
-        <h3>Com'è andata?</h3>
-        <p class="q-lead">Hai finito? Per prima cosa puoi cancellare tutti i dati che hai caricato: spariscono dalla pagina. Poi, quando vuoi, ti riconnetti a internet e ci dici cosa ne pensi. Il modulo è su un altro sito e non riceve nulla di ciò che hai caricato.</p>
-        <div class="q-fb-b"><button class="q-btn" onclick="wipeData()">1. Cancella tutti i dati</button><a class="q-btn q-btn-p" href="#" data-fb target="_blank" rel="noopener noreferrer" referrerpolicy="no-referrer" onclick="track('feedback_click')">2. Lascia un feedback</a></div>
-      </div>
     </section>
 
   </main>
@@ -2664,7 +2670,7 @@ function pacCallout(){
 // ── Feedback esterno + cancellazione dati ──
 const FEEDBACK_URL='https://forms.gle/a8c6NkATtTUHLT7Z6'   // <- sostituisci col link del tuo modulo (Tally o Google Forms)
 function wipeData(){
-  if(!confirm('Verranno cancellati tutti i dati caricati e inseriti. Vuoi continuare?'))return
+  if(!confirm('Verranno cancellati tutti i dati caricati e inseriti. Dopo la cancellazione potrai aprire il modulo di feedback (serve internet). Vuoi continuare?'))return
   location.hash='dati-cancellati';location.reload()
 }
 document.querySelectorAll('[data-fb]').forEach(a=>a.href=FEEDBACK_URL)
