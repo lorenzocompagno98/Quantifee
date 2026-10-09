@@ -596,7 +596,7 @@ details.q-det>div{padding:0 1.2rem 1.1rem}
         <a href="#confronto-sec">Altre banche</a>
         <a href="#flussi">Mese per mese</a>
         <a href="#grafici">Grafici</a>
-        <a href="#previsioni">Previsioni</a>
+        <a href="#previsioni">Evoluzione</a>
         <a href="#movimenti">Movimenti</a>
       </nav>
       <button class="q-newfile" onclick="resetTool()">Carica altri file</button>
@@ -711,8 +711,8 @@ details.q-det>div{padding:0 1.2rem 1.1rem}
 
     <!-- 6. PREVISIONI -->
     <section class="q-sec" id="previsioni">
-      <h2>Previsioni</h2>
-      <p class="q-lead">Dove sei oggi e dove potresti arrivare continuando così.</p>
+      <h2>Evoluzione e stato del patrimonio</h2>
+      <p class="q-lead">Come è cambiato il tuo patrimonio, dove sei oggi e dove potresti arrivare continuando così.</p>
 
       <h3 style="margin-top:0">Il tuo patrimonio nel tempo</h3>
       <div class="q-panel">
@@ -732,7 +732,7 @@ details.q-det>div{padding:0 1.2rem 1.1rem}
 
       <h3>Simulazione: quanto puoi accumulare</h3>
       <div class="q-panel">
-        <p class="q-sub">Scegli quanto metti da parte ogni mese e che rendimento ipotizzi. Il grafico mostra quanto avresti nel tempo.</p>
+        <p class="q-sub"><b>PAC</b> significa piano di accumulo: investi una somma fissa ogni mese, senza cercare il momento giusto. Scegli quanto versare e che rendimento ipotizzi: il grafico mostra quanto avresti nel tempo.</p>
         <div class="q-sim-in">
           <label>Capitale di partenza (€)
             <input type="number" step="100" id="sim-capital" oninput="this.dataset.touched='1';renderSimulation()"></label>
@@ -769,7 +769,7 @@ details.q-det>div{padding:0 1.2rem 1.1rem}
       <div class="q-fb" id="feedback">
         <h3>Com'è andata?</h3>
         <p class="q-lead">Hai finito? Per prima cosa puoi cancellare tutti i dati che hai caricato: spariscono dalla pagina. Poi, quando vuoi, ti riconnetti a internet e ci dici cosa ne pensi. Il modulo è su un altro sito e non riceve nulla di ciò che hai caricato.</p>
-        <div class="q-fb-b"><button class="q-btn" onclick="wipeData()">1. Cancella tutti i dati</button><a class="q-btn q-btn-p" href="#" data-fb target="_blank" rel="noopener" onclick="track('feedback_click')">2. Lascia un feedback</a></div>
+        <div class="q-fb-b"><button class="q-btn" onclick="wipeData()">1. Cancella tutti i dati</button><a class="q-btn q-btn-p" href="#" data-fb target="_blank" rel="noopener noreferrer" referrerpolicy="no-referrer" onclick="track('feedback_click')">2. Lascia un feedback</a></div>
       </div>
     </section>
 
@@ -2276,7 +2276,7 @@ function renderLiqCompare(d){
   <details class="q-det"><summary>Quanto renderebbe lo stesso saldo su ogni banca</summary><div>
   <div class="q-table-wrap"><table class="q-table"><thead><tr><th>Banca</th><th>Tasso lordo</th><th>Importo che rende</th><th>Interessi lordi/anno</th><th>Interessi netti/anno</th></tr></thead><tbody>${
    rows.map(x=>`<tr><td>${esc(nm(x.b))}</td><td>${x.r.edit?`<input type="number" step="0.25" min="0" value="${x.r.rate}" style="width:4.5rem" onchange="setLiqRate('${x.b}',this.value)" aria-label="Tasso lordo ${esc(nm(x.b))}"> %`:x.r.rate+'%'}</td><td>${fmt(x.base)}</td><td>${fmt(x.g,2)}</td><td><b>${fmt(x.n,2)}</b></td></tr>`).join('')}</tbody></table></div>
-  <ul class="q-note" style="margin-top:.7rem;padding-left:1.1rem">${rows.map(x=>`<li><b>${esc(nm(x.b))}</b>: ${esc(x.r.note)}${x.r.src?` · <a href="${x.r.src}" target="_blank" rel="noopener">fonte</a>`:''}</li>`).join('')}</ul>
+  <ul class="q-note" style="margin-top:.7rem;padding-left:1.1rem">${rows.map(x=>`<li><b>${esc(nm(x.b))}</b>: ${esc(x.r.note)}${x.r.src?` · <a href="${x.r.src}" target="_blank" rel="noopener noreferrer" referrerpolicy="no-referrer">fonte</a>`:''}</li>`).join('')}</ul>
   <p class="q-note">I tassi sono variabili e cambiano nel tempo. Oltre l'importo che rende, qui non conteggiamo altri interessi. È una stima, non una promessa della banca.</p></div></details>`
 }
 function renderBills(d){
@@ -2662,7 +2662,7 @@ function pacCallout(){
 }
 
 // ── Feedback esterno + cancellazione dati ──
-const FEEDBACK_URL='https://forms.gle/GazcouVnv39mfRVp8'   // <- sostituisci col link del tuo modulo (Tally o Google Forms)
+const FEEDBACK_URL='https://forms.gle/a8c6NkATtTUHLT7Z6'   // <- sostituisci col link del tuo modulo (Tally o Google Forms)
 function wipeData(){
   if(!confirm('Verranno cancellati tutti i dati caricati e inseriti. Vuoi continuare?'))return
   location.hash='dati-cancellati';location.reload()
@@ -2672,7 +2672,7 @@ if(location.hash==='#dati-cancellati'){
   history.replaceState(null,'',location.pathname+location.search)
   const u=document.getElementById('upload-sec')
   if(u){const d=document.createElement('div');d.className='q-fb q-fb-done'
-    d.innerHTML=`<h3>Dati cancellati</h3><p class="q-lead">Non c'è più nulla di ciò che avevi caricato. Se vuoi, ora puoi riconnetterti a internet e dirci cosa ne pensi: sono poche domande.</p><div class="q-fb-b"><a class="q-btn q-btn-p" href="${FEEDBACK_URL}" target="_blank" rel="noopener" onclick="track('feedback_click')">Lascia un feedback</a></div>`
+    d.innerHTML=`<h3>Dati cancellati</h3><p class="q-lead">Non c'è più nulla di ciò che avevi caricato. Se vuoi, ora puoi riconnetterti a internet e dirci cosa ne pensi: sono poche domande.</p><div class="q-fb-b"><a class="q-btn q-btn-p" href="${FEEDBACK_URL}" target="_blank" rel="noopener noreferrer" referrerpolicy="no-referrer" onclick="track('feedback_click')">Lascia un feedback</a></div>`
     u.prepend(d)}
 }
 // ── Messaggio: si può usare anche offline ──
@@ -2680,6 +2680,23 @@ if(location.hash==='#dati-cancellati'){
   const d=document.createElement('div');d.className='q-offline'
   d.innerHTML='<b>Funziona anche senza internet.</b> Apri la pagina, spegni il Wi-Fi e carica i tuoi file: l\'analisi si fa tutta sul tuo computer o telefono.'
   h.appendChild(d)})()
+
+// ── Dati di esempio: saldi di liquidità e investimenti per entrambe le banche (inventati) ──
+const _rd=runDemo
+runDemo=function(){
+  _rd.apply(this,arguments)
+  const DEMO_BAL={intesa:{cash:2800,inv:700},tr:{cash:350,inv:3900}}
+  setTimeout(()=>{
+    document.querySelectorAll('#wealth-balance-inputs .q-bank-in').forEach(box=>{
+      const ins=box.querySelectorAll('input[type=number]')
+      const m=(ins[0]&&ins[0].getAttribute('oninput')||'').match(/setWealth\('(\w+)'/)
+      const b=m&&m[1];if(!b||!DEMO_BAL[b])return
+      ins[0].value=DEMO_BAL[b].cash;ins[1].value=DEMO_BAL[b].inv
+      setWealth(b,'cash',DEMO_BAL[b].cash);setWealth(b,'inv',DEMO_BAL[b].inv)
+    })
+    const p=document.getElementById('sim-pac');if(p){p.value=300;renderSimulation()}
+  },0)
+}
 
 // ─── ANALYTICS (nessun dato bancario: solo nomi di evento) ───
 // Il contatore NON conta: file aperti in locale (file://), localhost, né i tuoi test se apri il sito una volta con ?notrack=1 (?notrack=0 per riattivarlo).
