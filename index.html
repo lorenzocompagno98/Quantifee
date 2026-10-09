@@ -434,6 +434,15 @@ details.q-det>div{padding:0 1.2rem 1.1rem}
 .q-pac-n span{font-size:1rem;font-weight:500;margin-left:.25rem}
 .q-pac-t{flex:1 1 280px;font-size:14px;line-height:1.5;color:var(--ink-sec,var(--ink))}
 
+.q-fb{margin:2rem 0 1rem;padding:1.2rem 1.3rem;border:1px solid var(--line,#d9dee3);border-radius:12px;background:var(--bg-card,#fff);max-width:760px}
+.q-fb h3{margin:0 0 .4rem}
+.q-fb-b{display:flex;flex-wrap:wrap;gap:.6rem;margin-top:.8rem}
+.q-fb-b a.q-btn{text-decoration:none;display:inline-block}
+.q-fb-done{margin:0 auto 1.5rem;border-color:var(--teal)}
+.q-btn.q-btn-p{background:var(--ink,#0d1b26);color:#fff;border-color:var(--ink,#0d1b26)}
+.q-offline{margin:1rem auto 0;max-width:460px;padding:.7rem 1rem;border:1px solid var(--teal-m,#5dcaa5);border-radius:10px;background:rgba(93,202,165,.1);color:#fff;font-size:14px;line-height:1.45;text-align:center}
+.q-offline b{color:var(--teal-m,#5dcaa5)}
+
 .q-table-wrap.tall{max-height:700px;overflow:auto}
 .q-table-wrap.tall thead th{position:sticky;top:0;z-index:2}
 .q-table-wrap.tall thead th:first-child{left:0;z-index:3}
@@ -591,6 +600,7 @@ details.q-det>div{padding:0 1.2rem 1.1rem}
         <a href="#movimenti">Movimenti</a>
       </nav>
       <button class="q-newfile" onclick="resetTool()">Carica altri file</button>
+      <button class="q-newfile" onclick="wipeData()">Cancella i dati</button>
     </div>
   </header>
   <div class="q-demo" id="demo-banner" hidden><strong>Dati di esempio, inventati.</strong> Nessuno di questi movimenti è reale.<button onclick="resetTool()">Carica i tuoi file</button></div>
@@ -756,6 +766,11 @@ details.q-det>div{padding:0 1.2rem 1.1rem}
         <div class="card" id="dedup-table"></div>
       </div>
       <div class="q-end"><button class="q-btn" onclick="resetTool()">Carica altri file</button></div>
+      <div class="q-fb" id="feedback">
+        <h3>Com'è andata?</h3>
+        <p class="q-lead">Hai finito? Per prima cosa puoi cancellare tutti i dati che hai caricato: spariscono dalla pagina. Poi, quando vuoi, ti riconnetti a internet e ci dici cosa ne pensi. Il modulo è su un altro sito e non riceve nulla di ciò che hai caricato.</p>
+        <div class="q-fb-b"><button class="q-btn" onclick="wipeData()">1. Cancella tutti i dati</button><a class="q-btn q-btn-p" href="#" data-fb target="_blank" rel="noopener" onclick="track('feedback_click')">2. Lascia un feedback</a></div>
+      </div>
     </section>
 
   </main>
@@ -2645,6 +2660,26 @@ function pacCallout(){
       ?`Ogni mese ti restano in media <b>${fmtSigned(avg)}</b> (entrate meno uscite). Con un PAC di <b>${fmt(pac)}</b> hai ancora <b>${fmt(m)}</b> liberi: puoi investirli in più senza ridurre la tua liquidità.`
       :`Ogni mese ti restano in media <b>${fmtSigned(avg)}</b> (entrate meno uscite), meno dei <b>${fmt(pac)}</b> del PAC. Per non intaccare la liquidità scendi di almeno <b>${fmt(Math.abs(m))}</b> al mese.`}</div></div>`
 }
+
+// ── Feedback esterno + cancellazione dati ──
+const FEEDBACK_URL='https://forms.gle/GazcouVnv39mfRVp8'   // <- sostituisci col link del tuo modulo (Tally o Google Forms)
+function wipeData(){
+  if(!confirm('Verranno cancellati tutti i dati caricati e inseriti. Vuoi continuare?'))return
+  location.hash='dati-cancellati';location.reload()
+}
+document.querySelectorAll('[data-fb]').forEach(a=>a.href=FEEDBACK_URL)
+if(location.hash==='#dati-cancellati'){
+  history.replaceState(null,'',location.pathname+location.search)
+  const u=document.getElementById('upload-sec')
+  if(u){const d=document.createElement('div');d.className='q-fb q-fb-done'
+    d.innerHTML=`<h3>Dati cancellati</h3><p class="q-lead">Non c'è più nulla di ciò che avevi caricato. Se vuoi, ora puoi riconnetterti a internet e dirci cosa ne pensi: sono poche domande.</p><div class="q-fb-b"><a class="q-btn q-btn-p" href="${FEEDBACK_URL}" target="_blank" rel="noopener" onclick="track('feedback_click')">Lascia un feedback</a></div>`
+    u.prepend(d)}
+}
+// ── Messaggio: si può usare anche offline ──
+;(function(){const h=document.querySelector('.land-h');if(!h)return
+  const d=document.createElement('div');d.className='q-offline'
+  d.innerHTML='<b>Funziona anche senza internet.</b> Apri la pagina, spegni il Wi-Fi e carica i tuoi file: l\'analisi si fa tutta sul tuo computer o telefono.'
+  h.appendChild(d)})()
 
 // ─── ANALYTICS (nessun dato bancario: solo nomi di evento) ───
 // Il contatore NON conta: file aperti in locale (file://), localhost, né i tuoi test se apri il sito una volta con ?notrack=1 (?notrack=0 per riattivarlo).
