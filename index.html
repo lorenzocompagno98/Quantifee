@@ -2314,8 +2314,13 @@ function renderBills(d){
     const a=totalFondi*(terF-terE)/100
     if(a>0)imp.push({k:'gest',title:'Commissioni di gestione degli investimenti',amt:a,more:moreHTML('gest'),d:`Hai investito <b>${fmt(totalFondi)}</b> in fondi che costano circa ${pc(terF)}% l'anno. Un ETF simile costerebbe circa ${pc(terE)}%: la differenza sono <b>${fmt(a,0)} l'anno</b> in più.`})
   }
-  const cardSpend=live.filter(t=>t.amount<0&&t.catType==='expense'&&t.source==='intesa'&&!t.isCommission&&!/bonifico|addebito|f24|mav|rav|bolletta|affitto|utenz/i.test((t.op||'')+' '+(t.cat||''))).reduce((s,t)=>s+Math.abs(t.amount),0)
-  if(cardSpend>0&&sb>0)imp.push({k:'sb',title:'Saveback non usufruito',amt:cardSpend*f*sb/100,more:moreHTML('sb'),d:`Hai speso circa <b>${fmt(cardSpend)}</b> con la carta Intesa nel periodo (≈ ${fmt(cardSpend*f)} l'anno, esclusi bonifici e addebiti). Con una carta che restituisce il ${pc(sb)}% investendolo (come quella di Trade Republic) avresti avuto circa <b>${fmt(cardSpend*f*sb/100,0)} l'anno</b>.`})
+  const _txt=t=>(t.op||'')+' '+(t.cat||'')+' '+(t.detail||'')
+  const _EXCL=/sepa|direct debit|quota carte|satispay|superflash|trasferimento denaro|bancomat pay|prelievo|prelievi|ricarica carta|ricarica internet|scommess|lotterie|sisal|pokerstars|snai|lottomatica|f24|\bmav\b|\brav\b|affitto/i
+  const _BANKOP=/bonifico|addebito|bolletta|utenz|domicili/i
+  const _UTIL=/\beni\b|\benel\b|\biren\b|\bhera\b|\ba2a\b|edison|\bacea\b|sorgenia|e\.on|engie|plenitude|\bsmat\b|acquedott|\btim\b|vodafone|windtre|wind tre|fastweb|iliad|\bgas\b|\bluce\b|energia/i
+  const isCardLike=t=>!_EXCL.test(_txt(t))&&(!_BANKOP.test(_txt(t))||_UTIL.test(_txt(t)))
+  const cardSpend=live.filter(t=>t.amount<0&&t.catType==='expense'&&t.source==='intesa'&&!t.isCommission&&isCardLike(t)).reduce((s,t)=>s+Math.abs(t.amount),0)
+  if(cardSpend>0&&sb>0)imp.push({k:'sb',title:'Saveback non usufruito',amt:cardSpend*f*sb/100,more:moreHTML('sb'),d:`Hai speso circa <b>${fmt(cardSpend)}</b> con la carta Intesa nel periodo (≈ ${fmt(cardSpend*f)} l'anno, incluse le bollette pagate a enti; esclusi bonifici a persone, prelievi e giochi). Con una carta che restituisce il ${pc(sb)}% investendolo (come quella di Trade Republic) avresti avuto circa <b>${fmt(cardSpend*f*sb/100,0)} l'anno</b>.`})
   const avgBal=b=>avgBalance(b,periodFrom,periodTo)
   const la=liqAnalysis(d),buf=la?la.S:0
   if(la&&la.gap>0.5)imp.push({k:'liq',title:'Interessi non percepiti',amt:la.gap,more:moreHTML('liq'),d:`Hai in media <b>${fmt(la.S)}</b> sui conti. Su <b>${esc(la.nm(la.top.b))}</b> ti avrebbero dato circa ${fmt(la.top.n,0)} l'anno netti: ne incassi circa ${fmt(la.realY,0)}. Dettaglio in <a href="#liq-cmp">E la liquidità?</a>.`})
