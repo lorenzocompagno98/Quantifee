@@ -3,9 +3,10 @@ QUANTIFEE - cartella del sito
 Contenuto:
   index.html     la pagina (aprila con doppio clic per provarla in locale, funziona anche senza internet dopo il caricamento)
   tariffe.json   le tariffe delle banche (se è accanto a index.html, il sito usa questo; altrimenti usa quelle incorporate)
+  video/         i tre video di spiegazione (interessi sulla liquidità, saveback, commissioni di gestione)
   libs/          le due librerie (lettura file Excel/CSV e grafici), incluse per non scaricarle da altri siti
 
-Per pubblicare su GitHub Pages: carica TUTTA la cartella (compresa libs/) nel repository e attiva Pages.
+Per pubblicare su GitHub Pages: carica TUTTA la cartella (comprese libs/ e video/) nel repository e attiva Pages.
 
 Prima di collegare il contatore (Umami/Plausible/GoatCounter):
   1. incolla il suo script al posto del commento "ANALYTICS" in index.html
@@ -16,3 +17,5 @@ Prima di collegare il contatore (Umami/Plausible/GoatCounter):
 Se il codice è pubblico: in index.html imposta REPO_URL con l'indirizzo del repository; comparirà nel pannello "Come verifico".
 
 Licenze librerie: xlsx (SheetJS) Apache-2.0, Chart.js MIT.
+
+Versione offline (Quantifee_offline.html): per vedere i video tieni accanto al file la cartella video/ (non testato con tutti i browser).
