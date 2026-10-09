@@ -2291,7 +2291,7 @@ function renderBills(d){
   const imp=[]
   if(totalFondi>0){
     const a=totalFondi*(terF-terE)/100
-    if(a>0)imp.push({k:'gest',title:'Costi dei fondi più alti di un ETF',amt:a,more:moreHTML('gest'),d:`Hai investito <b>${fmt(totalFondi)}</b> in fondi che costano circa ${pc(terF)}% l'anno. Un ETF simile costerebbe circa ${pc(terE)}%: la differenza sono <b>${fmt(a,0)} l'anno</b> in più.`})
+    if(a>0)imp.push({k:'gest',title:'Commissioni di gestione degli investimenti',amt:a,more:moreHTML('gest'),d:`Hai investito <b>${fmt(totalFondi)}</b> in fondi che costano circa ${pc(terF)}% l'anno. Un ETF simile costerebbe circa ${pc(terE)}%: la differenza sono <b>${fmt(a,0)} l'anno</b> in più.`})
   }
   const cardSpend=live.filter(t=>t.amount<0&&t.catType==='expense'&&t.source==='intesa'&&!t.isCommission&&!/bonifico|addebito|f24|mav|rav|bolletta|affitto|utenz/i.test((t.op||'')+' '+(t.cat||''))).reduce((s,t)=>s+Math.abs(t.amount),0)
   if(cardSpend>0&&sb>0)imp.push({k:'sb',title:'Saveback non usufruito',amt:cardSpend*f*sb/100,more:moreHTML('sb'),d:`Hai speso circa <b>${fmt(cardSpend)}</b> con la carta Intesa nel periodo (≈ ${fmt(cardSpend*f)} l'anno, esclusi bonifici e addebiti). Con una carta che restituisce il ${pc(sb)}% investendolo (come quella di Trade Republic) avresti avuto circa <b>${fmt(cardSpend*f*sb/100,0)} l'anno</b>.`})
@@ -2302,10 +2302,10 @@ function renderBills(d){
   const isa=getParam('isaTradeFee')
   const tImp=imp.reduce((s,i)=>s+i.amt,0)
   document.getElementById('bill-imp').innerHTML=billHTML({imp:true,
-    tag:'Costi nascosti, stimati',
+    tag:'Costi nascosti',
     num:fmt(tImp),unit:'/anno',
-    sub:'stima, non compare nell\'estratto',
-    intro:'Non sono addebiti: sono soldi che non guadagni, o che paghi dentro il prezzo di un prodotto (per esempio i costi di un fondo). Dipendono dalle ipotesi qui sotto, che puoi cambiare.',
+    sub:'calcolati da noi: non li vedi nell\'estratto conto',
+    intro:'Nessuno ti addebita questi soldi sul conto. Sono soldi che ogni anno non guadagni (interessi, saveback) o che paghi senza accorgertene, perché sono già dentro il prezzo del fondo. Sono calcoli approssimativi: cambiano se modifichi i valori qui sotto.',
     items:imp,totLabel:'Totale stimato',
     empty:'Con i dati caricati non emergono costi nascosti da stimare.',
     after:(buf>0?'':'<div class="q-law"><b>Interessi sulla liquidità non stimati:</b> inserisci il saldo dei tuoi conti nella sezione Patrimonio per includerli.</div>')+(isa>0?`<div class="q-law"><b>Non incluso nel totale:</b> comprare ETF con InvestoPro Go di Intesa costa circa ${fmt(isa,2)} a operazione. Su Trade Republic i piani di accumulo sono a €0.</div>`:'')})
@@ -2614,7 +2614,7 @@ const MORE={
  gest:{q:'Cosa sono le commissioni di gestione?',t:`Un fondo a gestione attiva è gestito da esperti che cercano di fare meglio di un indice, e costa di più; un ETF replica l'indice e costa meno. Il costo annuo è una percentuale del capitale, tolta dal valore dell'investimento: per questo non lo vedi. Secondo l'ESMA (fondi azionari europei, 2015-2024) i fondi attivi hanno reso in media il 7,6% l'anno al netto dei costi, fondi passivi ed ETF il 9,3%. Alcuni fondi hanno anche una commissione quando vendi le quote: la trovi nel KID.`,s:['esma','bdinv','bdi']}
 }
 function moreHTML(k){const m=MORE[k];return `<details class="q-more"><summary>${m.q}</summary><div><p>${m.t}</p><div class="q-src">Fonti ufficiali${srcList(m.s)}</div></div></details>`}
-const CHAPS=[{id:'liq',t:'Interessi non percepiti',t0:65.3},{id:'sb',t:'Saveback non usufruito',t0:147.5},{id:'gest',t:'Costi dei fondi',t0:178.9}]
+const CHAPS=[{id:'liq',t:'Interessi non percepiti',t0:65.3},{id:'sb',t:'Saveback non usufruito',t0:147.5},{id:'gest',t:'Commissioni di gestione',t0:178.9}]
 function renderExplain(){
   const el=document.getElementById('expl');if(!el||el.dataset.done)return
   el.dataset.done=1
