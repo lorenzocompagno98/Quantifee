@@ -449,6 +449,31 @@ details.q-det>div{padding:0 1.2rem 1.1rem}
 .q-newfile-fb{text-decoration:none;display:inline-block}
 @media(min-width:701px){.q-nav a{padding:.45rem .6rem;font-size:13.5px}.q-newfile{padding:.4rem .8rem}}
 
+/* ── Simulazione: modalità, passi, rendimento ── */
+.q-st{display:flex;align-items:center;gap:.6rem;font-weight:700;font-size:15px;margin:1rem 0 .55rem}
+.q-st:first-child{margin-top:0}
+.q-st span{display:inline-flex;align-items:center;justify-content:center;width:1.6rem;height:1.6rem;border-radius:50%;background:var(--teal);color:#fff;font-size:13px}
+.q-modes{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:.7rem}
+.q-mode{text-align:left;font:inherit;cursor:pointer;background:#fff;border:2px solid var(--border-s);border-radius:12px;padding:.8rem .9rem;display:flex;flex-direction:column;gap:.25rem;color:var(--ink)}
+.q-mode b{font-size:15px}
+.q-mode small{font-size:12.5px;color:var(--ink-sec);line-height:1.35}
+.q-mode.on{border-color:var(--teal);background:#F1FAF8}
+.q-mode:focus-visible,.q-chip:focus-visible{outline:3px solid var(--teal);outline-offset:2px}
+.q-hide{display:none!important}
+.q-hint{font-style:normal;font-weight:400;font-size:12px;color:var(--ink-sec);line-height:1.35}
+.q-chips{display:flex;flex-wrap:wrap;gap:.6rem;align-items:stretch}
+.q-chip{font:inherit;cursor:pointer;background:#fff;border:2px solid var(--border-s);border-radius:12px;padding:.55rem .9rem;display:flex;flex-direction:column;gap:.1rem;text-align:left;color:var(--ink)}
+.q-chip small{font-size:12.5px;color:var(--ink-sec)}
+.q-chip.on{border-color:var(--teal);background:#F1FAF8}
+.q-chip-in{display:flex;flex-direction:column;gap:.25rem;font-size:13px;color:var(--ink-sec);font-weight:600;justify-content:center}
+.q-chip-in input{padding:.45rem .6rem;border:1px solid var(--border-s);border-radius:4px;font-size:15px;font-weight:650;width:7.5rem}
+.q-prod{margin:.8rem 0}
+.q-ptab{width:100%;border-collapse:collapse;font-size:13.5px}
+.q-ptab th{text-align:left;font-size:12px;color:var(--ink-ter);padding:.35rem .5rem;border-bottom:1px solid var(--border-s)}
+.q-ptab td{padding:.5rem;border-bottom:1px solid var(--border);vertical-align:top}
+.q-ptab td:first-child{font-weight:650;white-space:nowrap}
+@media(max-width:700px){.q-ptab td:first-child{white-space:normal}}
+
 .q-table-wrap.tall{max-height:700px;overflow:auto}
 .q-table-wrap.tall thead th{position:sticky;top:0;z-index:2}
 .q-table-wrap.tall thead th:first-child{left:0;z-index:3}
@@ -736,21 +761,57 @@ details.q-det>div{padding:0 1.2rem 1.1rem}
       </details>
 
       <h3>Simulazione: quanto puoi accumulare</h3>
-      <div class="q-panel">
-        <p class="q-sub"><b>PAC</b> significa piano di accumulo: investi una somma fissa ogni mese, senza cercare il momento giusto. Scegli quanto versare e che rendimento ipotizzi: il grafico mostra quanto avresti nel tempo.</p>
+      <div class="q-panel q-simp">
+        <div class="q-st"><span>1</span> Come vuoi investire?</div>
+        <div class="q-modes" role="group" aria-label="Modo di investire">
+          <button type="button" class="q-mode" data-m="lump" onclick="setSimMode('lump')"><b>Tutto subito</b><small>Metti una somma una volta sola: è l'investimento iniziale.</small></button>
+          <button type="button" class="q-mode" data-m="pac" onclick="setSimMode('pac')"><b>Un po' alla volta (PAC)</b><small>Il PAC, piano di accumulo, è una cifra fissa che investi ogni mese.</small></button>
+          <button type="button" class="q-mode on" data-m="mix" onclick="setSimMode('mix')"><b>Misto</b><small>Una somma subito, poi una cifra fissa ogni mese.</small></button>
+        </div>
+
+        <div class="q-st"><span>2</span> Quanto investi?</div>
         <div class="q-sim-in">
-          <label>Capitale di partenza (€)
-            <input type="number" step="100" id="sim-capital" oninput="this.dataset.touched='1';renderSimulation()"></label>
-          <label>Quanto versi ogni mese (€)
+          <label id="wrap-cap">Investimento iniziale (€)
+            <input type="number" step="100" id="sim-capital" oninput="this.dataset.touched='1';renderSimulation()">
+            <em class="q-hint">Precompilato con quanto risulta già investito: il saldo investimenti che hai inserito più gli acquisti trovati nei movimenti. Puoi cambiarlo.</em></label>
+          <label id="wrap-pac">PAC: quanto versi ogni mese (€)
             <input type="number" step="10" id="sim-pac" value="650" oninput="renderSimulation()"></label>
-          <label>Rendimento annuo ipotizzato (%)
-            <input type="number" step="0.5" id="sim-return" value="5" oninput="renderSimulation()"></label>
           <label>Per quanti anni
             <input type="number" step="1" min="1" max="40" id="sim-years" value="10" oninput="renderSimulation()"></label>
         </div>
+
+        <div class="q-st"><span>3</span> Che rendimento ipotizzi?</div>
+        <div class="q-chips">
+          <button type="button" class="q-chip" data-r="1.8" onclick="setSimReturn(1.8)"><b>Obbligazioni</b><small>1,8% l'anno</small></button>
+          <button type="button" class="q-chip" data-r="5.5" onclick="setSimReturn(5.5)"><b>Metà e metà</b><small>5,5% l'anno</small></button>
+          <button type="button" class="q-chip" data-r="9.3" onclick="setSimReturn(9.3)"><b>Azioni</b><small>9,3% l'anno</small></button>
+          <label class="q-chip-in">Oppure scegli tu (%)
+            <input type="number" step="0.5" id="sim-return" value="5.5" oninput="renderSimulation()"></label>
+        </div>
+        <p class="q-note">Il rendimento dipende dal prodotto che scegli, e non tutti i prodotti si possono comprare a rate: controlla cosa permette la tua banca. Obbligazioni e azioni qui sono fondi ed ETF: il dato è la media europea dal 2015 al 2024, al netto dei costi correnti (ESMA). «Metà e metà» è la media semplice delle due, calcolata da noi.</p>
+        <details class="q-more q-prod"><summary>Che rendimento hanno avuto i prodotti più usati?</summary><div>
+          <table class="q-ptab"><thead><tr><th>Prodotto</th><th>Cosa aspettarsi</th></tr></thead><tbody>
+            <tr><td>Conto di deposito</td><td>Il tasso lo conosci alla firma e non cambia fino alla scadenza. Per esempio, a ottobre 2026 un deposito a un anno di BBVA paga il 2,8% lordo.</td></tr>
+            <tr><td>Obbligazione singola</td><td>Se la tieni fino alla scadenza ti restituiscono i soldi e di solito ti pagano una cedola. Il rendimento lo vedi al momento dell'acquisto; il rischio è che chi l'ha emessa non paghi.</td></tr>
+            <tr><td>Fondi e ETF obbligazionari</td><td>1,5% – 1,8% l'anno dal 2015 al 2024 (ESMA). Nel 2022 hanno perso in media il 5,3% (ETF).</td></tr>
+            <tr><td>Fondi attivi azionari</td><td>7,6% l'anno dal 2015 al 2024 (ESMA).</td></tr>
+            <tr><td>ETF azionari</td><td>9,3% l'anno dal 2015 al 2024 (ESMA). Nel 2022 hanno perso in media il 4,6%.</td></tr>
+            <tr><td>Azione singola</td><td>Non c'è un valore di riferimento: dipende dalla società e può anche perdere tutto il suo valore.</td></tr>
+          </tbody></table>
+          <p class="q-note" style="margin-top:.6rem">Rendimenti annui medi, fondi UCITS dell'Unione europea. I risultati passati non garantiscono quelli futuri.</p>
+          <div class="q-src">Fonti ufficiali<ul class="q-srcs"><li><a href="https://www.esma.europa.eu/sites/default/files/2026-03/ESMA50-1949966494-4065_Market_Report_-_Costs_and_Performance_of_EU_Retail_Investment_Products.pdf" target="_blank" rel="noopener noreferrer">ESMA, Costs and Performance of EU Retail Investment Products (marzo 2026), tabella MR-CP.14</a></li><li><a href="https://www.bbva.it/persone/prodotti/risparmio-e-investimenti/deposito-flessibile.html" target="_blank" rel="noopener noreferrer">BBVA, Deposito Flessibile (ottobre 2026)</a></li></ul></div>
+        </div></details>
+
         <div id="sim-margin"></div>
         <div id="sim-chart"></div>
         <div id="sim-table" style="margin-top:1rem"></div>
+
+        <details class="q-more q-prod"><summary>Meglio investire tutto subito o a rate?</summary><div>
+          <p>Vale per chi ha già una somma da investire. Vanguard ha confrontato, sui dati storici delle azioni mondiali (1976–2022), investire tutto subito con farlo in tre rate mensili. Con un orizzonte di un anno, <b>tutto subito ha reso di più nel 68% dei casi</b>: in mediana il 2,2% in più con un portafoglio di sole azioni, l'1,8% in più con il 60% azioni e 40% obbligazioni.</p>
+          <p>Però nelle fasi di ribasso tutto subito ha perso di più, e chi teme di investire proprio prima di un calo può preferire le rate. Lo studio lo riconosce. Se invece i soldi ti arrivano mese dopo mese, come lo stipendio, il confronto non si pone: il PAC è semplicemente il modo in cui investi.</p>
+          <div class="q-src">Fonti<ul class="q-srcs"><li><a href="https://corporate.vanguard.com/content/dam/corp/research/pdf/cost_averaging_invest_now_or_temporarily_hold_your_cash.pdf" target="_blank" rel="noopener noreferrer">Vanguard Research, «Cost averaging: Invest now or temporarily hold your cash?» (febbraio 2023)</a></li></ul></div>
+        </div></details>
+
         <p class="q-fine">Stima semplice a interesse composto mensile: ogni mese il capitale cresce del rendimento (annuo diviso 12) e si aggiunge il versamento. Non considera inflazione, tasse sulle plusvalenze né l'andamento dei mercati, che può essere negativo in singoli anni. Non è una previsione né una consulenza.</p>
       </div>
     </section>
@@ -2312,7 +2373,7 @@ function renderBills(d){
   const imp=[]
   if(totalFondi>0){
     const a=totalFondi*(terF-terE)/100
-    if(a>0)imp.push({k:'gest',title:'Commissioni di gestione degli investimenti',amt:a,more:moreHTML('gest'),d:`Hai investito <b>${fmt(totalFondi)}</b> in fondi che costano circa ${pc(terF)}% l'anno. Un ETF simile costerebbe circa ${pc(terE)}%: la differenza sono <b>${fmt(a,0)} l'anno</b> in più.`})
+    if(a>0)imp.push({k:'gest',title:'Commissioni di gestione degli investimenti',amt:a,more:moreHTML('gest'),d:`Hai investito <b>${fmt(totalFondi)}</b> in fondi con costi di gestione (ricorrenti) di circa ${pc(terF)}% l'anno. Un ETF simile avrebbe circa ${pc(terE)}%: la differenza sono <b>${fmt(a,0)} l'anno</b> in più.`})
   }
   const _txt=t=>(t.op||'')+' '+(t.cat||'')+' '+(t.detail||'')
   const _EXCL=/sepa|direct debit|quota carte|satispay|superflash|trasferimento denaro|bancomat pay|prelievo|prelievi|ricarica carta|ricarica internet|scommess|lotterie|sisal|pokerstars|snai|lottomatica|f24|\bmav\b|\brav\b|affitto/i
@@ -2622,6 +2683,7 @@ const SRC={
  trint:['Trade Republic, pagina «Interesse»','https://traderepublic.com/it-it/interesse'],
  trsb:['Trade Republic, assistenza «Che cos\'è il Saveback?»','https://support.traderepublic.com/it-it/1215-Was-ist-Saveback-'],
  ic:['Regolamento (UE) 2015/751 sulle commissioni di interscambio (EUR-Lex)','https://eur-lex.europa.eu/eli/reg/2015/751/oj/eng'],
+ consob:['Consob, Discussion papers n. 8, «Il costo dei fondi comuni in Italia» (8/1/2018)','https://www.Consob.it/documents/1912911/1955938/dp8.pdf/589dd4b6-f27a-be4b-3dea-4fce4f8374ed'],
  bdi:['Banca d\'Italia, L\'economia per tutti, «Quanto costa la gestione degli investimenti» (25/10/2024)','https://economiapertutti.bancaditalia.it/notizie-e-rubriche/notizie/quanto-costa-la-gestione-degli-investimenti/'],
  bdf:['Banca d\'Italia, L\'economia per tutti, «Funzioni economiche della banca»','https://economiapertutti.bancaditalia.it/notizie-e-rubriche/in-parole-semplici/cosa-e-una-banca/funzioni-economiche-della-banca/index.html'],
  bdinv:['Banca d\'Italia, L\'economia per tutti, «Parliamo di investimenti. C\'è fondo e fondo…» (costi annui ESMA)','https://economiapertutti.bancaditalia.it/notizie-e-rubriche/notizie/parliamo-di-investimenti-c-fondo-e-fondo/'],
@@ -2635,9 +2697,9 @@ const SRC={
 }
 const srcList=ks=>'<ul class="q-srcs">'+ks.map(k=>`<li><a href="${SRC[k][1]}" target="_blank" rel="noopener noreferrer">${SRC[k][0]}</a></li>`).join('')+'</ul>'
 const MORE={
- liq:{q:'Cosa sono gli interessi sulla liquidità?',t:`Sono quello che la banca ti paga ogni anno sui soldi fermi. Il <b>conto corrente</b> è quello di tutti i giorni (stipendio, spesa); il <b>conto di deposito</b> è per i risparmi: ci versi dei soldi e maturano interessi, di solito più alti, ma per spenderli li sposti prima sul conto corrente. Il tasso è annuo e lordo (2% lordo = 2 € l'anno ogni 100 €) e gli interessi sono tassati al 26%: alcune banche, in quanto sostituti d'imposta, trattengono loro l'imposta e ti pagano il netto; non tutte lo fanno. Il tasso lo decide ogni banca.`,s:['dep','ade','mir']},
- sb:{q:'Cos\'è il saveback?',t:`È una parte della spesa con carta che viene investita per te, in un piano di accumulo. Esempio, Trade Republic (altre banche possono avere condizioni diverse): 1% sui pagamenti idonei, massimo 15 € al mese, con almeno 50 € al mese in un piano di accumulo. La stima qui sopra non considera il tetto e la condizione: è ottimistica.`,s:['trsb']},
- gest:{q:'Cosa sono le commissioni di gestione?',t:`Un fondo a gestione attiva è gestito da esperti che cercano di fare meglio di un indice, e costa di più; un ETF replica l'indice e costa meno. Il costo annuo è una percentuale del capitale, tolta dal valore dell'investimento: per questo non lo vedi. Secondo l'ESMA (fondi azionari europei, 2015-2024) i fondi attivi hanno reso in media il 7,6% l'anno al netto dei costi, fondi passivi ed ETF il 9,3%. Alcuni fondi hanno anche una commissione quando vendi le quote: la trovi nel KID.`,s:['esma','bdinv','bdi']}
+ liq:{q:'Cosa sono gli interessi sulla liquidità?',t:`Sono quello che la banca ti paga ogni anno sui soldi che lasci fermi. Ci sono due tipi di conto.</p><p><b>Conto corrente.</b> È quello di tutti i giorni (stipendio, spesa). Alcune banche pagano interessi lordi anche sul conto corrente (Revolut e Trade Republic), altre no (Intesa Sanpaolo e UniCredit).</p><p><b>Conto di deposito.</b> È pensato per i risparmi: ci versi dei soldi e maturano interessi, di solito più alti. Per spenderli devi prima spostarli sul conto corrente.</p><p><b>Interessi lordi e netti.</b> Il tasso è annuo e lordo: con il 2% lordo prendi 2 € l'anno ogni 100 € fermi. Il tasso lo decide ogni banca.</p><p><b>Le tasse.</b> Gli interessi sono tassati al 26%. Alcune banche sono sostituti d'imposta: trattengono loro l'imposta e ti pagano gli interessi già netti, e non devi dichiarare nulla. Se la tua banca non lo fa, l'imposta la dichiari tu.`,s:['dep','ade','mir']},
+ sb:{q:'Cos\'è il saveback?',t:`Ogni volta che paghi con la carta, una piccola percentuale di quello che spendi ti viene restituita, ma non in contanti: viene investita a tuo nome. Questo si chiama saveback. <b>Esempio:</b> con il 1%, se spendi 100 € ne vedi 1 € investito.</p><p><b>Le regole cambiano da banca a banca.</b> Per esempio, una carta può dare l'1% sui pagamenti idonei, cioè non su tutti, fino a un massimo di 15 € al mese, e chiedere di versare almeno 50 € al mese in un piano di accumulo, cioè di investire una somma fissa ogni mese.</p><p><b>Perché la nostra cifra è ottimistica.</b> Calcoliamo l'1% su tutta la tua spesa con carta, senza il massimo di 15 € al mese (180 € l'anno) e senza la condizione dei 50 € al mese. Quello che avresti davvero potrebbe essere più basso, o zero se non hai un piano di accumulo.`,s:['trsb']},
+ gest:{q:'Cosa sono le commissioni di gestione?',t:`Quando metti i soldi in un fondo, chi lo gestisce si fa pagare ogni anno una piccola percentuale di quello che hai investito. Nessuno ti manda un conto da pagare: la percentuale viene tolta direttamente dal valore del tuo investimento, ed è per questo che non la vedi sull'estratto conto. <b>Esempio:</b> con una commissione del 2% l'anno, su 1.000 € ne paghi 20 ogni anno.</p><p><b>Ci sono due tipi di fondi.</b> Nel <b>fondo attivo</b> un gestore sceglie dove investire e cerca di fare meglio del mercato: costa di più. Nel <b>fondo passivo</b> (detto anche indicizzato) non si sceglie niente: si copia un indice, cioè un elenco di aziende, e costa molto meno. L'<b>ETF</b> è un tipo di fondo passivo che si compra e si vende in borsa come un'azione.</p></p><p><b>Come si chiamano i costi e chi li paga.</b> Sono quattro, e noi ne calcoliamo uno solo.<br>• <b>Costi ricorrenti</b> (o commissioni di gestione): ogni anno vengono tolti dal patrimonio del fondo, quindi il tuo investimento vale un po' meno senza nessun addebito sul conto. <b>È l'unico che calcoliamo.</b><br>• <b>Commissioni di performance</b> (o di incentivo): le chiedono alcuni fondi attivi se il fondo guadagna più di un obiettivo prefissato. Anche queste gravano sul patrimonio del fondo. <i>Non le calcoliamo.</i><br>• <b>Commissioni di entrata e di uscita</b>: non sono a carico del fondo ma di chi compra o vende le quote. <i>Non le calcoliamo.</i><br>• <b>Commissioni di negoziazione</b>: le paghi alla banca o al broker quando compri o vendi un ETF in borsa. <i>Non le calcoliamo.</i></p><p><b>Dove trovarli.</b> Prima di comprare, i costi stimati sono nel KID, il documento informativo che ogni fondo deve mettere a disposizione. Dopo, la banca ti manda ogni anno il rendiconto su costi e oneri con quelli effettivamente pagati.`,s:['bdinv','bdi','consob']}
 }
 function moreHTML(k){const m=MORE[k];return `<details class="q-more"><summary>${m.q}</summary><div><p>${m.t}</p><div class="q-src">Fonti ufficiali${srcList(m.s)}</div></div></details>`}
 const CHAPS=[{id:'liq',t:'Interessi non percepiti',t0:65.3},{id:'sb',t:'Saveback non usufruito',t0:147.5},{id:'gest',t:'Commissioni di gestione',t0:178.9}]
@@ -2658,9 +2720,29 @@ function seekVid(t,id){
 }
 
 // ── Evidenza: di quanto puoi aumentare il PAC senza toccare la liquidità ──
-const _rs=renderSimulation;renderSimulation=function(){_rs.apply(this,arguments);pacCallout()}
+const _rs=renderSimulation;renderSimulation=function(){_rs.apply(this,arguments);pacCallout();simChips()}
+let _simMode='mix'
+function setSimMode(m){
+  _simMode=m
+  const cap=document.getElementById('sim-capital'),pac=document.getElementById('sim-pac')
+  const set=(inp,wrapId,show)=>{
+    const w=document.getElementById(wrapId)
+    if(show){w.classList.remove('q-hide');if(inp.dataset.keep!==undefined){inp.value=inp.dataset.keep;delete inp.dataset.keep}}
+    else{if(inp.dataset.keep===undefined)inp.dataset.keep=inp.value;inp.value='0';w.classList.add('q-hide')}
+  }
+  set(cap,'wrap-cap',m!=='pac'); if(m==='pac')cap.dataset.touched='1'
+  set(pac,'wrap-pac',m!=='lump')
+  document.querySelectorAll('.q-mode').forEach(b=>{const on=b.dataset.m===m;b.classList.toggle('on',on);b.setAttribute('aria-pressed',on)})
+  renderSimulation()
+}
+function setSimReturn(r){document.getElementById('sim-return').value=r;renderSimulation()}
+function simChips(){
+  const v=parseFloat(document.getElementById('sim-return').value)
+  document.querySelectorAll('.q-chip').forEach(c=>{const on=Math.abs(parseFloat(c.dataset.r)-v)<1e-9;c.classList.toggle('on',on);c.setAttribute('aria-pressed',on)})
+}
 function pacCallout(){
   const el=document.getElementById('sim-margin');if(!el)return
+  if(_simMode==='lump'){el.innerHTML='';return}
   const pac=parseFloat(document.getElementById('sim-pac').value)||0
   const avg=_histAvgSavings, m=avg-pac, up=m>=0
   const col=up?'var(--teal)':'var(--red)'
