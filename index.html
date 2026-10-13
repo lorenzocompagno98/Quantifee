@@ -532,6 +532,40 @@ details.q-det>div{padding:0 1.2rem 1.1rem}
 @media(max-width:640px){.q-fb-steps{grid-template-columns:1fr}}
 @media print{.q-fb{display:none}}
 
+/* Scheda feedback globale (sostituisce laterale/linguetta/blocco finale) */
+.q-fbside,.q-fbtab,.q-fb{display:none!important}
+#q-fbw{position:fixed;z-index:45;right:14px;bottom:14px;font-family:inherit}
+#q-fbw[hidden]{display:none}
+.q-fbcard{display:none;background:linear-gradient(160deg,var(--teal),#0f7058);color:#fff;border-radius:14px;padding:1.1rem 1rem 1rem;box-shadow:0 8px 26px rgba(14,27,38,.22);width:230px;margin-bottom:10px}
+#q-fbw.open .q-fbcard{display:block}
+.q-fbcard h4{margin:0 0 .25rem;font-size:16px;line-height:1.25;font-weight:700;color:#fff}
+.q-fbcard>p{margin:0 0 .8rem;font-size:13px;color:#fff}
+.q-fbs{display:flex;gap:.6rem;background:#fff;color:var(--ink);border-radius:10px;padding:.65rem .7rem;margin-top:.5rem;font-size:13px}
+.q-fbs>div{display:flex;flex-direction:column;gap:.25rem;min-width:0;flex:1}
+.q-fbs b{font-size:13.5px}
+.q-fbs small{font-size:12px;color:var(--ink-sec,#566);line-height:1.35}
+.q-fbn{flex:none;width:22px;height:22px;border-radius:50%;background:var(--teal);color:#fff;font-weight:700;font-size:12px;display:flex;align-items:center;justify-content:center}
+.q-fbs.done .q-fbn{background:#2f9e6b}.q-fbs.done .q-fbn::before{content:"\2713"}.q-fbs.done .q-fbn{font-size:0}.q-fbs.done .q-fbn::before{font-size:13px}
+.q-fbs.off{opacity:.62}
+.q-fbs.on#q-fbs2{outline:3px solid #FFD36B}
+.q-fbs button,.q-fbs a{margin-top:.2rem;text-align:center;font:inherit;font-weight:700;font-size:13px;padding:.5rem .6rem;border-radius:8px;text-decoration:none;cursor:pointer;border:1px solid var(--ink);background:#fff;color:var(--ink)}
+.q-fbs button.arm{background:#B3261E;border-color:#B3261E;color:#fff}
+.q-fbs a{background:var(--ink);color:#fff}
+.q-fbs a[aria-disabled="true"]{background:#c8cfd6;border-color:#c8cfd6;color:#fff;cursor:not-allowed;pointer-events:none}
+.q-fbpill{display:block;margin-left:auto;background:var(--teal);color:#fff;border:0;font-weight:700;font-size:14px;padding:.65rem 1.1rem;border-radius:999px;box-shadow:0 6px 20px rgba(14,27,38,.25);cursor:pointer}
+@media(min-width:1600px){
+  #q-fbw{right:max(14px,calc((100vw - 1120px)/2 - 244px));top:96px;bottom:auto;width:230px}
+  .q-fbcard{display:block;margin:0}.q-fbpill{display:none}
+}
+@media print{#q-fbw{display:none!important}}
+
+.q-fbs.on2#q-fbs2,.q-fbs.on#q-fbs2{outline:0}
+.q-fbs.on#q-fbs2{outline:3px solid #FFD36B}
+.q-fbask{display:flex;flex-direction:column;gap:.35rem}
+.q-fbask[hidden]{display:none}
+.q-fbask a{background:var(--ink);color:#fff;margin-top:.2rem}
+.q-fbs a[hidden],.q-fbs button[hidden]{display:none}
+
 .q-table-wrap.tall{max-height:700px;overflow:auto}
 .q-table-wrap.tall thead th{position:sticky;top:0;z-index:2}
 .q-table-wrap.tall thead th:first-child{left:0;z-index:3}
@@ -687,20 +721,11 @@ details.q-det>div{padding:0 1.2rem 1.1rem}
         <a href="#movimenti">Movimenti</a>
       </nav>
       <button class="q-newfile" onclick="resetTool()">Carica altri file</button>
-      <button class="q-newfile" onclick="wipeData()" title="Cancella tutti i dati che hai caricato">Cancella i dati</button>
-      <a class="q-newfile q-newfile-fb" href="#" data-fb target="_blank" rel="noopener noreferrer" referrerpolicy="no-referrer" onclick="track('feedback_click_barra')">Feedback</a>
     </div>
   </header>
   <div class="q-demo" id="demo-banner" hidden><strong>Dati di esempio, inventati.</strong> Nessuno di questi movimenti è reale.<button onclick="resetTool()">Carica i tuoi file</button></div>
 
   <main class="q-main">
-    <aside class="q-fbside" aria-label="Feedback"><div class="q-fbcard">
-      <h4>Cosa ne pensi di Quantifee?</h4>
-      <p>Poche domande, circa 2 minuti. Ci aiuti a migliorarlo.</p>
-      <a href="#" data-fb target="_blank" rel="noopener noreferrer" referrerpolicy="no-referrer" onclick="track('feedback_click_laterale')">Lascia un feedback</a>
-    </div></aside>
-    <a class="q-fbtab" href="#" data-fb target="_blank" rel="noopener noreferrer" referrerpolicy="no-referrer" onclick="track('feedback_click_linguetta')">Lascia un feedback</a>
-
     <!-- 1. PANORAMICA -->
     <section class="q-sec" id="ov">
       <h2>Panoramica</h2>
@@ -881,15 +906,6 @@ details.q-det>div{padding:0 1.2rem 1.1rem}
     </section>
 
     <!-- 7. MOVIMENTI -->
-    <div class="q-fb" id="feedback">
-        <div class="q-fb-head"><h3>Com'è andata?</h3>
-        <p>Hai finito? Prima cancella i dati caricati, poi ci dici cosa ne pensi. Il modulo è su un altro sito e non riceve nulla di ciò che hai caricato.</p></div>
-        <div class="q-fb-steps">
-          <div class="q-fb-step"><span class="q-fb-n">1</span><h4>Cancella i tuoi dati</h4><p>Spariscono dalla pagina: non resta nulla di ciò che hai caricato.</p><button class="q-btn" onclick="wipeData()">Cancella tutti i dati</button></div>
-          <div class="q-fb-step q-fb-step2"><span class="q-fb-n">2</span><h4>Dicci cosa ne pensi</h4><p>Poche domande, circa 2 minuti. Ci aiuti a migliorare Quantifee.</p><a class="q-btn q-btn-p" href="#" data-fb target="_blank" rel="noopener noreferrer" referrerpolicy="no-referrer" onclick="track('feedback_click')">Lascia un feedback</a></div>
-        </div>
-      </div>
-
     <section class="q-sec" id="movimenti">
       <h2>Tutti i movimenti</h2>
       <p class="q-lead">Se una categoria è sbagliata, toccala per correggerla: il calcolo si aggiorna. <span class="rules-badge" id="learned-badge" style="display:none">0 regole</span></p>
@@ -2828,17 +2844,52 @@ function pacCallout(){
 // ── Feedback esterno + cancellazione dati ──
 const FEEDBACK_URL='https://forms.gle/a8c6NkATtTUHLT7Z6'   // <- sostituisci col link del tuo modulo (Tally o Google Forms)
 function wipeData(){
-  if(!confirm('Verranno cancellati tutti i dati caricati e inseriti. Dopo la cancellazione potrai aprire il modulo di feedback (serve internet). Vuoi continuare?'))return
-  location.hash='dati-cancellati';location.reload()
+  try{sessionStorage.setItem('q_wiped','1')}catch(e){}
+  location.reload()
 }
-document.querySelectorAll('[data-fb]').forEach(a=>a.href=FEEDBACK_URL)
-if(location.hash==='#dati-cancellati'){
-  history.replaceState(null,'',location.pathname+location.search)
-  const u=document.getElementById('upload-sec')
-  if(u){const d=document.createElement('div');d.className='q-fb q-fb-done'
-    d.innerHTML=`<h3>Dati cancellati</h3><p class="q-lead">Non c'è più nulla di ciò che avevi caricato. Se vuoi, ora puoi riconnetterti a internet e dirci cosa ne pensi: sono poche domande.</p><div class="q-fb-b"><a class="q-btn q-btn-p" href="${FEEDBACK_URL}" target="_blank" rel="noopener noreferrer" referrerpolicy="no-referrer" onclick="track('feedback_click')">Lascia un feedback</a></div>`
-    u.prepend(d)}
-}
+// ── Scheda feedback: cancella i dati, poi sblocca il modulo ──
+;(function(){
+  const w=document.createElement('div');w.id='q-fbw';w.hidden=true
+  w.innerHTML=`<div class="q-fbcard" id="q-fbcard">
+    <h4>Cosa ne pensi di Quantifee?</h4>
+    <p>15 domande, circa 5 minuti.</p>
+    <div class="q-fbs" id="q-fbs1"><span class="q-fbn">1</span><div><b>Cancella i tuoi dati</b><small id="q-fbs1t"></small><button type="button" id="q-fbwipe">Cancella i miei dati</button></div></div>
+    <div class="q-fbs" id="q-fbs2"><span class="q-fbn">2</span><div><b>Lascia un feedback</b><small id="q-fbs2t"></small><a href="#" id="q-fbgo" data-fb target="_blank" rel="noopener noreferrer" referrerpolicy="no-referrer">Apri il questionario</a></div></div>
+  </div><button type="button" class="q-fbpill" id="q-fbpill" aria-expanded="false">Feedback</button>`
+  document.body.appendChild(w)
+  const $=id=>document.getElementById(id)
+  $('q-fbgo').href=FEEDBACK_URL;let HD=false
+  let armed=0
+  const wipeBtn=$('q-fbwipe'),go=$('q-fbgo')
+  wipeBtn.addEventListener('click',()=>{
+    if(!armed){armed=1;wipeBtn.textContent='Sicuro? Tocca ancora';wipeBtn.classList.add('arm');setTimeout(()=>{armed=0;wipeBtn.classList.remove('arm');upd()},5000);return}
+    wipeData()})
+  go.addEventListener('click',()=>track(HD?'feedback_click_con_dati':'feedback_click'))
+  $('q-fbpill').addEventListener('click',()=>{const o=w.classList.toggle('open');$('q-fbpill').setAttribute('aria-expanded',o)})
+  function upd(){
+    let wiped=false;try{wiped=sessionStorage.getItem('q_wiped')==='1'}catch(e){}
+    const res=document.getElementById('results-sec')
+    const resVis=!!(res&&res.offsetParent!==null)
+    let demo=false,hasData=false
+    try{demo=!!_demoMode}catch(e){}
+    try{hasData=(allTx.length>0||pendingFiles.length>0)&&!demo}catch(e){}
+    w.hidden=!(resVis||wiped)
+    const s1=$('q-fbs1'),s2=$('q-fbs2')
+    HD=hasData
+    if(hasData){
+      s1.className='q-fbs on';s2.className='q-fbs on2'
+      $('q-fbs1t').textContent='Spariscono dalla pagina, anche i campi scritti a mano.'
+      wipeBtn.hidden=false;if(!armed){wipeBtn.textContent='Cancella i miei dati'}
+      $('q-fbs2t').textContent='Hai ancora i dati caricati. Il questionario si apre su un altro sito e serve internet.';go.textContent='Apri il questionario, mantieni i dati'
+    }else{
+      s1.className='q-fbs done';s2.className='q-fbs on'
+      $('q-fbs1t').textContent=demo?'Dati di esempio: niente da cancellare.':(wiped?'Dati cancellati.':'Nessun dato caricato.')
+      wipeBtn.hidden=true;go.textContent='Apri il questionario'
+      $('q-fbs2t').textContent='Il questionario si apre su un altro sito.'
+    }
+  }
+  upd();setInterval(upd,800)
+})()
 // ── Messaggio: si può usare anche offline ──
 ;(function(){const h=document.querySelector('.land-h');if(!h)return
   const d=document.createElement('div');d.className='q-offline'
