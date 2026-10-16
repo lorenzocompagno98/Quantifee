@@ -1,6 +1,6 @@
 {
-  "versione": "2026-10-02",
-  "avviso": "Tariffe pubbliche dei piani consumer, lette dai fogli informativi ufficiali. Dati indicativi: verifica sempre sul sito della banca. null = dato non verificato o non confrontabile.",
+  "versione": "2026-10-17",
+  "avviso": "Tariffe pubbliche dei piani consumer, lette dai fogli informativi ufficiali. Dati indicativi: verifica sempre sul sito della banca. null = dato non verificato o non confrontabile. Interessi e cashback/saveback: tassi lordi annui, per fasce di saldo. Costi di negoziazione e custodia dei titoli (campo «etf»): salvati ma non ancora usati nei calcoli.",
   "banche": {
     "intesa": {
       "nome": "Intesa Sanpaolo",
@@ -20,7 +20,36 @@
           "bollo_nota": "Non dovuto con giacenza media fino a €5.000",
           "data_doc": "2026-07-01",
           "fonte": "https://www.intesasanpaolo.com/content/dam/vetrina/trasparenza/it/Documenti/Doc/Pdf/FI/FI-Other/FI-1852.pdf",
-          "fonte2": "https://www.intesasanpaolo.com/content/dam/vetrina/trasparenza/it/Documenti/Doc/Pdf/FI/FI-Other/FI-1245.pdf"
+          "fonte2": "https://www.intesasanpaolo.com/content/dam/vetrina/trasparenza/it/Documenti/Doc/Pdf/FI/FI-Other/FI-1245.pdf",
+          "interesse": {
+            "fasce": [
+              {
+                "fino_a": null,
+                "lordo_pct": 0
+              }
+            ],
+            "nota": "Remunerazione delle giacenze non prevista (tasso creditore annuo nominale 0,0000%)",
+            "fonte": "https://www.intesasanpaolo.com/content/dam/vetrina/trasparenza/it/Documenti/Doc/Pdf/FI/FI-Other/FI-1245.pdf",
+            "data_doc": "2026-10-01"
+          },
+          "cashback": {
+            "pct": 0,
+            "tipo": null,
+            "max_mese_eur": null,
+            "nota": "Nessun cashback o rimborso sulla spesa con carta nel foglio informativo",
+            "fonte": "https://www.intesasanpaolo.com/content/dam/vetrina/trasparenza/it/Documenti/Doc/Pdf/FI/FI-Other/FI-1245.pdf",
+            "data_doc": "2026-10-01"
+          },
+          "etf": {
+            "ordine_pct": 0,
+            "ordine_min": 0,
+            "ordine_fisso": 9,
+            "gratis_mese": 0,
+            "custodia_anno": null,
+            "nota": "ETF e azioni di Borsa Italiana con InvestoPro (gruppo Intesa Sanpaolo): 9 € a ordine per i clienti Intesa, 12 € per gli altri. I costi semestrali di gestione e amministrazione del deposito titoli non sono quantificati in questa fonte.",
+            "fonte": "https://www.investopro.com/resources/docs/it/Condizioni-economiche-InvestoPro-Trading.pdf",
+            "data_doc": null
+          }
         },
         "silver": {
           "nome": "XME Conto Silver",
@@ -34,9 +63,45 @@
           "bollo_anno": 34.2,
           "bollo_nota": "Non dovuto con giacenza media fino a €5.000",
           "data_doc": null,
-          "fonte": "https://www.intesasanpaolo.com/content/dam/vetrina/trasparenza/it/Documenti/Doc/Pdf/FI/FI-Other/FI-1841.pdf"
+          "fonte": "https://www.intesasanpaolo.com/content/dam/vetrina/trasparenza/it/Documenti/Doc/Pdf/FI/FI-Other/FI-1841.pdf",
+          "interesse": {
+            "fasce": [
+              {
+                "fino_a": null,
+                "lordo_pct": 0
+              }
+            ],
+            "nota": "Tasso creditore annuo nominale 0,0000%",
+            "fonte": "https://www.intesasanpaolo.com/content/dam/vetrina/trasparenza/it/Documenti/Doc/Pdf/FI/FI-Other/FI-1363.pdf",
+            "data_doc": "2026-10-01"
+          },
+          "cashback": {
+            "pct": 0,
+            "tipo": null,
+            "max_mese_eur": null,
+            "nota": "Nessun cashback o rimborso sulla spesa con carta nel foglio informativo",
+            "fonte": "https://www.intesasanpaolo.com/content/dam/vetrina/trasparenza/it/Documenti/Doc/Pdf/FI/FI-Other/FI-1363.pdf",
+            "data_doc": "2026-10-01"
+          },
+          "etf": {
+            "ordine_pct": 0,
+            "ordine_min": 0,
+            "ordine_fisso": 9,
+            "gratis_mese": 0,
+            "custodia_anno": null,
+            "nota": "ETF e azioni di Borsa Italiana con InvestoPro (gruppo Intesa Sanpaolo): 9 € a ordine per i clienti Intesa, 12 € per gli altri. I costi semestrali di gestione e amministrazione del deposito titoli non sono quantificati in questa fonte.",
+            "fonte": "https://www.investopro.com/resources/docs/it/Condizioni-economiche-InvestoPro-Trading.pdf",
+            "data_doc": null
+          }
         }
-      }
+      },
+      "sostituto_imposta": {
+        "plusvalenze": true,
+        "interessi": true,
+        "nota": "",
+        "fonte": null
+      },
+      "investimenti_tipo": "attivo"
     },
     "unicredit": {
       "nome": "UniCredit",
@@ -53,7 +118,40 @@
           "ricarica_prepagata": null,
           "bollo_anno": null,
           "data_doc": null,
-          "fonte": "https://trasparenza.unicredit.it/pdfprod/CC140_CONTO+CORRENTE+GENIUS+.pdf"
+          "fonte": "https://trasparenza.unicredit.it/pdfprod/CC140_CONTO+CORRENTE+GENIUS+.pdf",
+          "interesse": {
+            "fasce": [
+              {
+                "fino_a": 2500,
+                "lordo_pct": 0
+              },
+              {
+                "fino_a": null,
+                "lordo_pct": 0.001
+              }
+            ],
+            "nota": "Tasso creditore annuo nominale: 0% fino a 2.500 €, 0,001% oltre",
+            "fonte": "https://trasparenza.unicredit.it/pdfprod/CC140_CONTO+CORRENTE+GENIUS+.pdf",
+            "data_doc": "2026-10-01"
+          },
+          "cashback": {
+            "pct": 0,
+            "tipo": null,
+            "max_mese_eur": null,
+            "nota": "Nessun cashback o rimborso sulla spesa con carta nel foglio informativo",
+            "fonte": "https://trasparenza.unicredit.it/pdfprod/CC140_CONTO+CORRENTE+GENIUS+.pdf",
+            "data_doc": "2026-10-01"
+          },
+          "etf": {
+            "ordine_pct": 0.4,
+            "ordine_min": 11.5,
+            "ordine_fisso": 0,
+            "gratis_mese": 0,
+            "custodia_anno": 126,
+            "nota": "ETF su Borsa Italiana via internet: 0,40% dell'importo, minimo 11,50 € a ordine (DT01 p. 4). Custodia: 126 € l'anno (63 € a semestre) alla voce «altri strumenti finanziari italiani»: il foglio non assegna esplicitamente gli ETF a questa voce. Il foglio indica 4,75 € fissi a operazione per le azioni italiane (non è detto che valgano per gli ETF). Promozioni per i nuovi contratti: commissione 0,10% con minimo 2 € fino al 31/01/2027, custodia gratuita fino al 31/12/2028.",
+            "fonte": "https://trasparenza.unicredit.it/pdfprod/DT01_CONTO+TITOLIServizio+di+custodia+ed+amministrazione+di+titoli+e+strumenti+finanziari.pdf",
+            "data_doc": "2026-10-01"
+          }
         },
         "care": {
           "nome": "Genius Care",
@@ -67,9 +165,49 @@
           "bollo_anno": null,
           "data_doc": "2026-10-01",
           "fonte": "https://trasparenza.unicredit.it/pdfprod/FIDCC139_FID+CONTO+CORRENTE+Genius+Care.pdf",
-          "fonte2": "https://trasparenza.unicredit.it/pdfprod/CC139_CONTO+CORRENTE+GENIUS+CARE+GENIUS+CARE+TOP.pdf"
+          "fonte2": "https://trasparenza.unicredit.it/pdfprod/CC139_CONTO+CORRENTE+GENIUS+CARE+GENIUS+CARE+TOP.pdf",
+          "interesse": {
+            "fasce": [
+              {
+                "fino_a": 2500,
+                "lordo_pct": 0
+              },
+              {
+                "fino_a": null,
+                "lordo_pct": 0.001
+              }
+            ],
+            "nota": "Tasso creditore annuo nominale: 0% fino a 2.500 €, 0,001% oltre",
+            "fonte": "https://trasparenza.unicredit.it/pdfprod/CC139_CONTO+CORRENTE+GENIUS+CARE+GENIUS+CARE+TOP.pdf",
+            "data_doc": "2026-10-01"
+          },
+          "cashback": {
+            "pct": 0,
+            "tipo": null,
+            "max_mese_eur": null,
+            "nota": "Nessun cashback o rimborso sulla spesa con carta nel foglio informativo",
+            "fonte": "https://trasparenza.unicredit.it/pdfprod/CC139_CONTO+CORRENTE+GENIUS+CARE+GENIUS+CARE+TOP.pdf",
+            "data_doc": "2026-10-01"
+          },
+          "etf": {
+            "ordine_pct": 0.4,
+            "ordine_min": 11.5,
+            "ordine_fisso": 0,
+            "gratis_mese": 0,
+            "custodia_anno": 126,
+            "nota": "ETF su Borsa Italiana via internet: 0,40% dell'importo, minimo 11,50 € a ordine (DT01 p. 4). Custodia: 126 € l'anno (63 € a semestre) alla voce «altri strumenti finanziari italiani»: il foglio non assegna esplicitamente gli ETF a questa voce. Il foglio indica 4,75 € fissi a operazione per le azioni italiane (non è detto che valgano per gli ETF). Promozioni per i nuovi contratti: commissione 0,10% con minimo 2 € fino al 31/01/2027, custodia gratuita fino al 31/12/2028.",
+            "fonte": "https://trasparenza.unicredit.it/pdfprod/DT01_CONTO+TITOLIServizio+di+custodia+ed+amministrazione+di+titoli+e+strumenti+finanziari.pdf",
+            "data_doc": "2026-10-01"
+          }
         }
-      }
+      },
+      "sostituto_imposta": {
+        "plusvalenze": true,
+        "interessi": true,
+        "nota": "",
+        "fonte": null
+      },
+      "investimenti_tipo": "attivo"
     },
     "revolut": {
       "nome": "Revolut",
@@ -87,7 +225,52 @@
           "bollo_anno": null,
           "data_doc": "2026-05-07",
           "fonte": "https://www.revolut.com/it-IT/legal/standard-fees/",
-          "fonte2": "https://www.revolut.com/it-IT/our-pricing-plans/"
+          "fonte2": "https://www.revolut.com/it-IT/our-pricing-plans/",
+          "interesse": {
+            "fasce": [
+              {
+                "fino_a": null,
+                "lordo_pct": 0
+              }
+            ],
+            "nota": "Il foglio informativo del conto corrente Revolut non prevede interessi sul saldo. I tassi di Revolut sono del Conto deposito senza vincoli, un sottoconto separato (versamenti e prelievi immediati, nessun vincolo di durata) da cui non risulta che si possa pagare con la carta: per questo non sono conteggiati. Qui vale 0.",
+            "fonte": "https://www.revolut.com/it-IT/legal/italy-information-sheet/",
+            "data_doc": "2026-10-15",
+            "deposito_senza_vincoli": {
+              "fasce": [
+                {
+                  "fino_a": 3000,
+                  "lordo_pct": 2.5
+                },
+                {
+                  "fino_a": null,
+                  "lordo_pct": 1.0
+                }
+              ],
+              "nota": "Non usato nei calcoli: sottoconto di risparmio, non conto per le spese.",
+              "fonte": "https://www.revolut.com/it-IT/legal/pre-contractual-information-instant-access-savings-account/",
+              "data_doc": "2026-10-15"
+            }
+          },
+          "cashback": {
+            "pct": 0,
+            "tipo": null,
+            "max_mese_eur": null,
+            "nota": "Il cashback che Revolut pubblicizza è del conto Pro per professionisti. Per i conti personali non risulta nei documenti: contato a 0.",
+            "fonte": "https://www.revolut.com/it-IT/legal/italy-information-sheet/",
+            "data_doc": "2026-10-15"
+          },
+          "etf": {
+            "ordine_pct": 0.25,
+            "ordine_min": 1,
+            "ordine_fisso": 0,
+            "gratis_mese": 0,
+            "custodia_anno": 0,
+            "nota": "Ordini gratuiti al mese: 0 (dato più prudente: la pagina ETF di Revolut indica 1 con Standard e 3 con Plus, la pagina di assistenza 0 e 0). Oltre la soglia: il maggiore tra 0,25% dell'importo e 1 € (pagina ETF); la pagina di assistenza indica 1 € fisso. Nessuna custodia. I piani di investimento ricorrenti in ETF idonei non hanno commissioni.",
+            "fonte": "https://revolut.com/it-IT/etfs",
+            "fonte2": "https://help.revolut.com/it-IT/help/wealth/stocks/trading-stocks/trading-fees/what-fees-will-i-be-charged-for-my-trading/",
+            "data_doc": null
+          }
         },
         "plus": {
           "nome": "Plus",
@@ -99,7 +282,52 @@
           "ricarica_prepagata": null,
           "bollo_anno": null,
           "data_doc": null,
-          "fonte": "https://www.revolut.com/it-IT/our-pricing-plans/"
+          "fonte": "https://www.revolut.com/it-IT/our-pricing-plans/",
+          "interesse": {
+            "fasce": [
+              {
+                "fino_a": null,
+                "lordo_pct": 0
+              }
+            ],
+            "nota": "Il foglio informativo del conto corrente Revolut non prevede interessi sul saldo. I tassi di Revolut sono del Conto deposito senza vincoli, un sottoconto separato (versamenti e prelievi immediati, nessun vincolo di durata) da cui non risulta che si possa pagare con la carta: per questo non sono conteggiati. Qui vale 0.",
+            "fonte": "https://www.revolut.com/it-IT/legal/italy-information-sheet/",
+            "data_doc": "2026-10-15",
+            "deposito_senza_vincoli": {
+              "fasce": [
+                {
+                  "fino_a": 3000,
+                  "lordo_pct": 2.5
+                },
+                {
+                  "fino_a": null,
+                  "lordo_pct": 1.0
+                }
+              ],
+              "nota": "Non usato nei calcoli: sottoconto di risparmio, non conto per le spese.",
+              "fonte": "https://www.revolut.com/it-IT/legal/pre-contractual-information-instant-access-savings-account/",
+              "data_doc": "2026-10-15"
+            }
+          },
+          "cashback": {
+            "pct": 0,
+            "tipo": null,
+            "max_mese_eur": null,
+            "nota": "Il cashback che Revolut pubblicizza è del conto Pro per professionisti. Per i conti personali non risulta nei documenti: contato a 0.",
+            "fonte": "https://www.revolut.com/it-IT/legal/italy-information-sheet/",
+            "data_doc": "2026-10-15"
+          },
+          "etf": {
+            "ordine_pct": 0.25,
+            "ordine_min": 1,
+            "ordine_fisso": 0,
+            "gratis_mese": 0,
+            "custodia_anno": 0,
+            "nota": "Ordini gratuiti al mese: 0 (dato più prudente: la pagina ETF di Revolut indica 1 con Standard e 3 con Plus, la pagina di assistenza 0 e 0). Oltre la soglia: il maggiore tra 0,25% dell'importo e 1 € (pagina ETF); la pagina di assistenza indica 1 € fisso. Nessuna custodia. I piani di investimento ricorrenti in ETF idonei non hanno commissioni.",
+            "fonte": "https://revolut.com/it-IT/etfs",
+            "fonte2": "https://help.revolut.com/it-IT/help/wealth/stocks/trading-stocks/trading-fees/what-fees-will-i-be-charged-for-my-trading/",
+            "data_doc": null
+          }
         },
         "premium": {
           "nome": "Premium",
@@ -111,7 +339,52 @@
           "ricarica_prepagata": null,
           "bollo_anno": null,
           "data_doc": null,
-          "fonte": "https://www.revolut.com/it-IT/our-pricing-plans/"
+          "fonte": "https://www.revolut.com/it-IT/our-pricing-plans/",
+          "interesse": {
+            "fasce": [
+              {
+                "fino_a": null,
+                "lordo_pct": 0
+              }
+            ],
+            "nota": "Il foglio informativo del conto corrente Revolut non prevede interessi sul saldo. I tassi di Revolut sono del Conto deposito senza vincoli, un sottoconto separato (versamenti e prelievi immediati, nessun vincolo di durata) da cui non risulta che si possa pagare con la carta: per questo non sono conteggiati. Qui vale 0.",
+            "fonte": "https://www.revolut.com/it-IT/legal/italy-information-sheet/",
+            "data_doc": "2026-10-15",
+            "deposito_senza_vincoli": {
+              "fasce": [
+                {
+                  "fino_a": 6000,
+                  "lordo_pct": 2.5
+                },
+                {
+                  "fino_a": null,
+                  "lordo_pct": 1.25
+                }
+              ],
+              "nota": "Non usato nei calcoli: sottoconto di risparmio, non conto per le spese.",
+              "fonte": "https://www.revolut.com/it-IT/legal/pre-contractual-information-instant-access-savings-account/",
+              "data_doc": "2026-10-15"
+            }
+          },
+          "cashback": {
+            "pct": 0,
+            "tipo": null,
+            "max_mese_eur": null,
+            "nota": "Il cashback che Revolut pubblicizza è del conto Pro per professionisti. Per i conti personali non risulta nei documenti: contato a 0.",
+            "fonte": "https://www.revolut.com/it-IT/legal/italy-information-sheet/",
+            "data_doc": "2026-10-15"
+          },
+          "etf": {
+            "ordine_pct": 0.25,
+            "ordine_min": 1,
+            "ordine_fisso": 0,
+            "gratis_mese": 5,
+            "custodia_anno": 0,
+            "nota": "Ordini gratuiti al mese: 5 (dato più prudente: la pagina ETF di Revolut indica 1 con Standard e 3 con Plus, la pagina di assistenza 0 e 0). Oltre la soglia: il maggiore tra 0,25% dell'importo e 1 € (pagina ETF); la pagina di assistenza indica 1 € fisso. Nessuna custodia. I piani di investimento ricorrenti in ETF idonei non hanno commissioni.",
+            "fonte": "https://revolut.com/it-IT/etfs",
+            "fonte2": "https://help.revolut.com/it-IT/help/wealth/stocks/trading-stocks/trading-fees/what-fees-will-i-be-charged-for-my-trading/",
+            "data_doc": null
+          }
         },
         "metal": {
           "nome": "Metal",
@@ -123,7 +396,48 @@
           "ricarica_prepagata": null,
           "bollo_anno": null,
           "data_doc": null,
-          "fonte": "https://www.revolut.com/it-IT/our-pricing-plans/"
+          "fonte": "https://www.revolut.com/it-IT/our-pricing-plans/",
+          "interesse": {
+            "fasce": [
+              {
+                "fino_a": null,
+                "lordo_pct": 0
+              }
+            ],
+            "nota": "Il foglio informativo del conto corrente Revolut non prevede interessi sul saldo. I tassi di Revolut sono del Conto deposito senza vincoli, un sottoconto separato (versamenti e prelievi immediati, nessun vincolo di durata) da cui non risulta che si possa pagare con la carta: per questo non sono conteggiati. Qui vale 0.",
+            "fonte": "https://www.revolut.com/it-IT/legal/italy-information-sheet/",
+            "data_doc": "2026-10-15",
+            "deposito_senza_vincoli": {
+              "fasce": [
+                {
+                  "fino_a": null,
+                  "lordo_pct": 2.5
+                }
+              ],
+              "nota": "Non usato nei calcoli: sottoconto di risparmio, non conto per le spese.",
+              "fonte": "https://www.revolut.com/it-IT/legal/pre-contractual-information-instant-access-savings-account/",
+              "data_doc": "2026-10-15"
+            }
+          },
+          "cashback": {
+            "pct": 0,
+            "tipo": null,
+            "max_mese_eur": null,
+            "nota": "Il cashback che Revolut pubblicizza è del conto Pro per professionisti. Per i conti personali non risulta nei documenti: contato a 0.",
+            "fonte": "https://www.revolut.com/it-IT/legal/italy-information-sheet/",
+            "data_doc": "2026-10-15"
+          },
+          "etf": {
+            "ordine_pct": 0.25,
+            "ordine_min": 1,
+            "ordine_fisso": 0,
+            "gratis_mese": 10,
+            "custodia_anno": 0,
+            "nota": "Ordini gratuiti al mese: 10 (dato più prudente: la pagina ETF di Revolut indica 1 con Standard e 3 con Plus, la pagina di assistenza 0 e 0). Oltre la soglia: il maggiore tra 0,25% dell'importo e 1 € (pagina ETF); la pagina di assistenza indica 1 € fisso. Nessuna custodia. I piani di investimento ricorrenti in ETF idonei non hanno commissioni.",
+            "fonte": "https://revolut.com/it-IT/etfs",
+            "fonte2": "https://help.revolut.com/it-IT/help/wealth/stocks/trading-stocks/trading-fees/what-fees-will-i-be-charged-for-my-trading/",
+            "data_doc": null
+          }
         },
         "ultra": {
           "nome": "Ultra",
@@ -135,9 +449,61 @@
           "ricarica_prepagata": null,
           "bollo_anno": null,
           "data_doc": null,
-          "fonte": "https://www.revolut.com/it-IT/our-pricing-plans/"
+          "fonte": "https://www.revolut.com/it-IT/our-pricing-plans/",
+          "interesse": {
+            "fasce": [
+              {
+                "fino_a": null,
+                "lordo_pct": 0
+              }
+            ],
+            "nota": "Il foglio informativo del conto corrente Revolut non prevede interessi sul saldo. I tassi di Revolut sono del Conto deposito senza vincoli, un sottoconto separato (versamenti e prelievi immediati, nessun vincolo di durata) da cui non risulta che si possa pagare con la carta: per questo non sono conteggiati. Qui vale 0.",
+            "fonte": "https://www.revolut.com/it-IT/legal/italy-information-sheet/",
+            "data_doc": "2026-10-15",
+            "deposito_senza_vincoli": {
+              "fasce": [
+                {
+                  "fino_a": 100000,
+                  "lordo_pct": 2.75
+                },
+                {
+                  "fino_a": null,
+                  "lordo_pct": 2.5
+                }
+              ],
+              "nota": "Non usato nei calcoli: sottoconto di risparmio, non conto per le spese.",
+              "fonte": "https://www.revolut.com/it-IT/legal/pre-contractual-information-instant-access-savings-account/",
+              "data_doc": "2026-10-15"
+            }
+          },
+          "cashback": {
+            "pct": 0,
+            "tipo": null,
+            "max_mese_eur": null,
+            "nota": "Il cashback che Revolut pubblicizza è del conto Pro per professionisti. Per i conti personali non risulta nei documenti: contato a 0.",
+            "fonte": "https://www.revolut.com/it-IT/legal/italy-information-sheet/",
+            "data_doc": "2026-10-15"
+          },
+          "etf": {
+            "ordine_pct": 0.12,
+            "ordine_min": 1,
+            "ordine_fisso": 0,
+            "gratis_mese": 10,
+            "custodia_anno": 0,
+            "nota": "Ordini gratuiti al mese: 10 (dato più prudente: la pagina ETF di Revolut indica 1 con Standard e 3 con Plus, la pagina di assistenza 0 e 0). Oltre la soglia: il maggiore tra 0,12% dell'importo e 1 € (pagina ETF); la pagina di assistenza indica 1 € fisso. Nessuna custodia. I piani di investimento ricorrenti in ETF idonei non hanno commissioni.",
+            "fonte": "https://revolut.com/it-IT/etfs",
+            "fonte2": "https://help.revolut.com/it-IT/help/wealth/stocks/trading-stocks/trading-fees/what-fees-will-i-be-charged-for-my-trading/",
+            "data_doc": null
+          }
         }
-      }
+      },
+      "sostituto_imposta": {
+        "plusvalenze": false,
+        "interessi": null,
+        "nota": "",
+        "fonte": null
+      },
+      "investimenti_tipo": "passivo"
     },
     "tr": {
       "nome": "Trade Republic",
@@ -156,9 +522,49 @@
           "bollo_anno": null,
           "data_doc": "2025-01-01",
           "fonte": "https://assets.traderepublic.com/assets/files/FeeInformation_PaymentAccount_it.pdf",
-          "fonte2": "https://support.traderepublic.com/it-it/784-Are-there-commissions-for-order-execution"
+          "fonte2": "https://support.traderepublic.com/it-it/784-Are-there-commissions-for-order-execution",
+          "interesse": {
+            "fasce": [
+              {
+                "fino_a": 50000,
+                "lordo_pct": 3
+              },
+              {
+                "fino_a": null,
+                "lordo_pct": 0
+              }
+            ],
+            "nota": "La pagina ufficiale indica il 3% annuo fino a 50.000 € «per i nuovi clienti»; per chi è già cliente e per la durata non dà indicazioni. Oltre 50.000 € non indica un tasso: contato a 0.",
+            "fonte": "https://traderepublic.com/it-it/interesse",
+            "data_doc": null
+          },
+          "cashback": {
+            "pct": 1,
+            "tipo": "saveback",
+            "max_mese_eur": 15,
+            "nota": "Saveback 1% sui pagamenti con carta idonei, investito nel piano di accumulo. Massimo 15 € al mese (1.500 € di spesa). Richiede un piano di accumulo da almeno 50 € al mese.",
+            "fonte": "https://support.traderepublic.com/it-it/1215-Was-ist-Saveback-",
+            "data_doc": null
+          },
+          "etf": {
+            "ordine_pct": 0,
+            "ordine_min": 0,
+            "ordine_fisso": 1,
+            "gratis_mese": 0,
+            "custodia_anno": 0,
+            "nota": "Nessuna commissione di negoziazione, più 1 € di costi di regolamento esterno per ogni ordine.",
+            "fonte": "https://support.traderepublic.com/it-it/784-Are-there-commissions-for-order-execution",
+            "data_doc": null
+          }
         }
-      }
+      },
+      "sostituto_imposta": {
+        "plusvalenze": true,
+        "interessi": true,
+        "nota": "",
+        "fonte": null
+      },
+      "investimenti_tipo": "passivo"
     }
   }
 }

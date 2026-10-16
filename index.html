@@ -624,6 +624,14 @@ details.q-det>div{padding:0 1.2rem 1.1rem}
 #wealth-chart-total,#wealth-chart-cash,#wealth-chart-invest,#sim-chart{overflow-x:auto}
 #wealth-chart-total>svg,#wealth-chart-cash>svg,#wealth-chart-invest>svg,#sim-chart>svg{min-width:760px}
 
+
+@media (pointer:coarse),(max-width:1100px){.q-table-wrap.tall{max-height:none;overflow-y:visible;-webkit-overflow-scrolling:touch}.q-table-wrap.tall thead th,.q-table-wrap.tall tfoot td{position:static}}
+
+.file-chip{flex-wrap:wrap}.chip-plan{margin-left:auto;font-size:12px;color:rgba(255,255,255,.75)}
+.chip-sel{background:rgba(255,255,255,.12);color:#fff;border:1px solid rgba(255,255,255,.3);border-radius:6px;font-size:12px;padding:.2rem .4rem;margin-left:.3rem;max-width:11rem}
+.chip-sel option{color:#0E1B26;background:#fff}
+.oc{display:inline-block;max-width:14rem;white-space:normal;text-align:right;color:var(--ink-ter)}
+.chip-hint{font-size:12px;color:rgba(255,255,255,.55);margin:.2rem 0 .6rem;line-height:1.5}
 </style>
 </head>
 <body>
@@ -748,6 +756,7 @@ details.q-det>div{padding:0 1.2rem 1.1rem}
       <h2>Quanto ti costa la banca</h2>
       <p class="q-lead">Prima le commissioni che vedi nell'estratto conto, poi i costi nascosti, quelli che non compaiono come addebito. Ogni totale è accanto alle voci che lo compongono.</p>
       <div id="bill-exp"></div>
+      <div id="plan-panel"></div>
       <div id="bill-imp"></div>
       <div id="expl"></div>
       <div class="q-assume">
@@ -961,8 +970,8 @@ const BANK_COLORS={intesa:'#378ADD',tr:'#1D9E75',revolut:'#7F77DD',unicredit:'#E
 
 // ─── PARAMS (editable) ────────────────────────────
 const PARAMS={
-  terFondi:   {v:2.20, label:'TER fondi correnti (%/anno)',  unit:'%',  note:'Es. Intesa Le23 ~2.2%', min:0, max:5,  step:0.05},
-  terETF:     {v:0.15, label:'TER ETF alternativo (%/anno)', unit:'%',  note:'Es. iShares MSCI World 0.20%', min:0, max:2, step:0.05},
+  terFondi:   {v:2.00, label:'Costi di gestione fondi attivi (%/anno)',  unit:'%',  note:'Circa 2% per i fondi azionari italiani (ESMA, citata da Banca d\'Italia)', min:0, max:5,  step:0.05},
+  terETF:     {v:0.30, label:'Costi di gestione ETF e passivi (%/anno)', unit:'%',  note:'Circa 0,3% per gli ETF azionari (ESMA, citata da Banca d\'Italia)', min:0, max:2, step:0.05},
   saveback:   {v:1.00, label:'Saveback TR (%)',               unit:'%',  note:'1% su spese con carta TR', min:0, max:5, step:0.1},
   cashRate:   {v:3, label:'Interesse liquidità TR (%/anno)',unit:'%', note:'Tasso lordo pubblicato da Trade Republic', min:0, max:10,step:0.25},
   isaTradeFee:{v:3.90, label:'Commissione ETF Intesa (€/trade)',unit:'€',note:'InvestoPro Go su Borsa IT', min:0, max:20, step:0.5},
@@ -1364,17 +1373,14 @@ function mKey(tx){return(tx.detail||tx.op||'').trim().slice(0,40).toLowerCase()}
 
 // ─── ANALYZE ──────────────────────────────────────
 function analyze(txs){
-  txs.forEach(tx=>{if(tx.source==='intesa')normCat(tx)})
-  txs.forEach(tx=>{
-    if(!tx.catLabel){const m=tx.mcc?TR_MCC[tx.mcc+'']:null;tx.catLabel=m?m.l:(tx.cat||'Altro');tx.catIcon=m?m.i:'💳';if(!tx.catType)tx.catType='expense'}
-  })
+  txs.forEach(classify);applyRules(txs)
   const live=txs.filter(t=>!t.isInternal)
   const investments=live.filter(t=>t.amount<0&&t.catType==='investment')
   const disinvestments=live.filter(t=>t.amount>0&&t.catType==='disinvestment')
   const fondiInvest=investments.filter(t=>t.source==='intesa'||/fondi/i.test(t.cat||''))
   const etfInvest=investments.filter(t=>t.source==='tr'&&t.op==='BUY')
   const expenses=live.filter(t=>t.amount<0&&t.catType==='expense')
-  const intesaCardSpend=live.filter(t=>t.amount<0&&t.catType==='expense'&&t.source==='intesa')
+  const intesaCardSpend=live.filter(t=>t.amount<0&&t.catType==='expense'&&t.source==='intesa'&&!/bonific/i.test(t.op||'')&&!t.isCommission)
   const incomes=live.filter(t=>t.amount>0&&t.catType==='income')
   const comms=live.filter(t=>t.isCommission)
   const evit=comms.filter(t=>t.commEvit)
@@ -2195,6 +2201,48 @@ function clearMonthFilter(){
 let activeBankFilter=null   // 'intesa' | 'tr' | 'revolut' | 'unicredit' | null
 
 // ─── TX TABLE ─────────────────────────────────────
+let catFilter=new Set(),txSort={key:null,dir:'asc'}
+function txSetSort(k){
+  if(txSort.key!==k)txSort={key:k,dir:(k==='date'||k==='amount')?'desc':'asc'}
+  else if(txSort.dir==='asc'&&(k==='date'||k==='amount')){txSort={key:null,dir:'asc'}}
+  else if(txSort.dir==='asc')txSort.dir='desc'
+  else txSort=(k==='date'||k==='amount')?{key:k,dir:'asc'}:{key:null,dir:'asc'}
+  renderTxTable(activeFilter)
+}
+function txToggleCat(l){catFilter.has(l)?catFilter.delete(l):catFilter.add(l);renderTxTable(activeFilter)}
+function txClearCat(){catFilter.clear();renderTxTable(activeFilter)}
+function txResetView(){catFilter=new Set();txSort={key:null,dir:'asc'}}
+function txEnsureUI(rowsBeforeCat){
+  // intestazioni cliccabili
+  const keys=['date','desc','bank','cat','amount','note']
+  document.querySelectorAll('table.tx thead th').forEach((th,i)=>{
+    const k=keys[i];if(!k)return
+    if(!th.dataset.k){th.dataset.k=k;th.dataset.t=th.textContent;th.style.cursor='pointer';th.style.userSelect='none';th.title='Clicca per ordinare';th.onclick=()=>txSetSort(k)}
+    const on=txSort.key===k
+    th.textContent=th.dataset.t+(on?(txSort.dir==='asc'?' ▲':' ▼'):' ↕')
+    th.style.color=on?'var(--ink)':''
+    th.setAttribute('aria-sort',on?(txSort.dir==='asc'?'ascending':'descending'):'none')
+  })
+  // barra categorie
+  const fb=document.getElementById('filter-bar');if(!fb)return
+  let w=document.getElementById('cat-filter');
+  if(!w){
+    w=document.createElement('div');w.id='cat-filter';w.style.cssText='margin:-.3rem 0 .8rem'
+    fb.parentNode.insertBefore(w,fb.nextSibling)
+    const c=document.createElement('div');c.id='tx-count';c.style.cssText='font-size:11px;color:var(--ink-ter);margin:-.4rem 0 .6rem'
+    w.parentNode.insertBefore(c,w.nextSibling)
+  }
+  // categorie presenti (nel contesto degli altri filtri), con conteggio
+  const cats={};rowsBeforeCat.forEach(t=>{const l=t.catLabel||t.cat||'—';(cats[l]=cats[l]||{n:0,i:t.catIcon||'💳'}).n++})
+  catFilter.forEach(l=>{if(!cats[l]&&!allTx.some(t=>(t.catLabel||t.cat||'—')===l))catFilter.delete(l)})
+  const names=Object.keys(cats).sort((a,b)=>a.localeCompare(b,'it'))
+  const open=w.querySelector('details')?.open
+  const esc2=x=>String(x).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;')
+  w.innerHTML=`<details${open?' open':''}><summary class="filter-btn" style="display:inline-block;cursor:pointer;list-style:none">🏷️ Categorie${catFilter.size?` (${catFilter.size} selezionat${catFilter.size===1?'a':'e'})`:''} ▾</summary>
+    <div style="margin-top:.5rem;padding:.6rem;border:.5px solid var(--border-s);border-radius:10px;max-height:240px;overflow:auto;display:flex;flex-wrap:wrap;gap:.4rem">
+    ${names.map(l=>`<label class="filter-btn${catFilter.has(l)?' active':''}" style="cursor:pointer"><input type="checkbox" style="display:none" ${catFilter.has(l)?'checked':''} onchange="txToggleCat(this.dataset.l)" data-l="${esc2(l)}">${cats[l].i} ${esc2(l)} <span style="opacity:.6">${cats[l].n}</span></label>`).join('')}
+    ${catFilter.size?'<button class="filter-btn" onclick="txClearCat()">Azzera categorie</button>':''}</div></details>`
+}
 function setFilter(f){activeFilter=f;renderTxTable(f)}
 function setBankFilter(bank){
   activeBankFilter = activeBankFilter===bank ? null : bank  // toggle
@@ -2224,8 +2272,32 @@ function renderTxTable(filter){
   if((customFrom||customTo)&&!activeMonthFilter){
     rows=rows.filter(t=>(!customFrom||t.date>=customFrom)&&(!customTo||t.date<=customTo))
   }
+  // Filtro categorie (multi-selezione) — combinabile con tutti gli altri
+  txEnsureUI(rows)
+  if(catFilter.size) rows=rows.filter(t=>catFilter.has(t.catLabel||t.cat||'—'))
+  // Ordinamento colonne (prima del taglio a 200 righe)
+  if(txSort.key){
+    const dir=txSort.dir==='asc'?1:-1,col=new Intl.Collator('it',{sensitivity:'base',numeric:true})
+    const bnk={intesa:'Intesa',tr:'Trade Republic',revolut:'Revolut',unicredit:'UniCredit'}
+    const val={
+      date:t=>+t.date,
+      desc:t=>(t.detail||t.op||''),
+      bank:t=>bnk[t.source]||t.source||'',
+      cat:t=>(t.catLabel||t.cat||'—'),
+      amount:t=>t.amount,
+      note:t=>t.isInternal?'Interno':t.isCommission?(t.commEvit?'Evitabile':'Tassa'):t.catType==='investment'?'Investimento':''
+    }[txSort.key]
+    rows=rows.map((t,i)=>[t,i]).sort((x,y)=>{
+      const p=val(x[0]),q=val(y[0])
+      const c=typeof p==='number'?p-q:col.compare(p,q)
+      return c?c*dir:x[1]-y[1]
+    }).map(x=>x[0])
+  }
   const idxMap=rows.map(r=>allTx.indexOf(r))
+  const totRows=rows.length
   rows=rows.slice(0,200)
+  const cnt=document.getElementById('tx-count')
+  if(cnt)cnt.textContent=totRows>200?`Mostro 200 movimenti su ${totRows}. Usa i filtri per restringere.`:`${totRows} moviment${totRows===1?'o':'i'}`
   document.getElementById('tx-body').innerHTML=rows.map((t,i)=>{
     const txIdx=idxMap[i],editable=!t.isInternal
     const catHtml=editable
@@ -2351,10 +2423,10 @@ function billHTML(o){
     </div>
     <div class="q-bill-items">
       ${o.items.length?`<ul>${o.items.map(i=>`<li class="q-line">
-        <div class="q-line-head"><span class="q-line-t">${i.count?`<span class="q-count">${i.count}</span>`:''}${i.title}</span><span class="q-leader"></span><span class="q-line-amt">${fmt(i.amt,2)}${o.imp?'<small style="font-weight:600">/anno</small>':''}</span></div>
+        <div class="q-line-head"><span class="q-line-t">${i.count?`<span class="q-count">${i.count}</span>`:''}${i.title}</span><span class="q-leader"></span><span class="q-line-amt">${fmt(i.amt,2)}</span></div>
         <div class="q-line-bar"><span style="width:${Math.max(3,i.amt/max*100).toFixed(1)}%"></span></div>
         <div class="q-line-d">${i.d}</div>${i.more||''}</li>`).join('')}</ul>
-        <div class="q-bill-totline"><span>${o.totLabel}</span><span>${fmt(o.items.reduce((s,i)=>s+i.amt,0),2)}${o.imp?'/anno':''}</span></div>`
+        <div class="q-bill-totline"><span>${o.totLabel}</span><span>${fmt(o.items.reduce((s,i)=>s+i.amt,0),2)}</span></div>`
       :`<div class="q-empty">${o.empty}</div>`}
       ${o.after||''}
     </div></div>`
@@ -2443,7 +2515,7 @@ function renderBills(d){
   document.getElementById('bill-exp').innerHTML=billHTML({
     tag:'Commissioni evitabili, già pagate',
     num:fmt(tEv,tEv>=100?0:2),
-    sub:tEv>0?`in ${nm} ${plu(nm,'mese','mesi')}, circa <b>${fmt(tEv*f)} l'anno</b>`:'nessuna trovata nel periodo',
+    sub:tEv>0?`in ${nm} ${plu(nm,'mese','mesi')} di movimenti`:'nessuna trovata nel periodo',
     intro:'Addebiti che trovi scritti nell\'estratto conto e che un\'altra banca non ti farebbe pagare, oppure ti farebbe pagare meno. A destra vedi da cosa è formato il totale.',
     items:ev.map(g=>({count:g.count+'×',title:esc(g.desc.replace(/\s*→.*$/,'')),amt:g.total,
       d:`${g.count} ${plu(g.count,'addebito','addebiti')} su ${esc(listIt([...g.src].map(bn)))} · <b>${esc(g.alt||'')}</b>`})),
@@ -2451,46 +2523,36 @@ function renderBills(d){
     empty:'Nel periodo non risultano commissioni evitabili. Bene: guarda i costi nascosti qui sotto.',
     after:lawTxt})
 
-  // — implicite (stime annue) —
-  const pc=n=>String(n).replace('.',','),terF=getParam('terFondi'),terE=getParam('terETF'),sb=getParam('saveback')
+  // — implicite: simulazioni sui movimenti caricati, nessuna proiezione oltre il periodo —
+  const pc=n=>String(n).replace('.',','),terF=getParam('terFondi'),terE=getParam('terETF')
+  const periodTxt=fmtDate(periodFrom)+' – '+fmtDate(periodTo)
   const imp=[]
-  if(totalFondi>0){
-    const a=totalFondi*(terF-terE)/100
-    if(a>0)imp.push({k:'gest',title:'Commissioni di gestione degli investimenti',amt:a,more:moreHTML('gest'),d:`Hai investito <b>${fmt(totalFondi)}</b> in fondi con costi di gestione (ricorrenti) di circa ${pc(terF)}% l'anno. Un ETF simile avrebbe circa ${pc(terE)}%: la differenza sono <b>${fmt(a,0)} l'anno</b> in più.`})
-  }
-  const _txt=t=>(t.op||'')+' '+(t.cat||'')+' '+(t.detail||'')
-  const _EXCL=/sepa|direct debit|quota carte|satispay|superflash|trasferimento denaro|bancomat pay|prelievo|prelievi|ricarica carta|ricarica internet|scommess|lotterie|sisal|pokerstars|snai|lottomatica|f24|\bmav\b|\brav\b|affitto/i
-  const _BANKOP=/bonifico|addebito|bolletta|utenz|domicili/i
-  const _UTIL=/\beni\b|\benel\b|\biren\b|\bhera\b|\ba2a\b|edison|\bacea\b|sorgenia|e\.on|engie|plenitude|\bsmat\b|acquedott|\btim\b|vodafone|windtre|wind tre|fastweb|iliad|\bgas\b|\bluce\b|energia/i
-  const isCardLike=t=>!_EXCL.test(_txt(t))&&(!_BANKOP.test(_txt(t))||_UTIL.test(_txt(t)))
-  const cardSpend=live.filter(t=>t.amount<0&&t.catType==='expense'&&t.source==='intesa'&&!t.isCommission&&isCardLike(t)).reduce((s,t)=>s+Math.abs(t.amount),0)
-  if(cardSpend>0&&sb>0)imp.push({k:'sb',title:'Cashback/saveback non ottenuto',amt:cardSpend*f*sb/100,more:moreHTML('sb'),d:`Hai speso circa <b>${fmt(cardSpend)}</b> con la carta Intesa nel periodo (≈ ${fmt(cardSpend*f)} l'anno, incluse le bollette pagate a enti; esclusi bonifici a persone, prelievi e giochi). Con una carta che restituisce il ${pc(sb)}% (come cashback sul conto, oppure come saveback investito, ad esempio la carta di Trade Republic) avresti avuto circa <b>${fmt(cardSpend*f*sb/100,0)} l'anno</b>.`})
-  const avgBal=b=>avgBalance(b,periodFrom,periodTo)
+  const _gi=oppInvItem(d);if(_gi)imp.push(_gi)
+  const _ci=oppCashItem(d);if(_ci)imp.push(_ci)
+  const _li=oppLiqItem(d);if(_li)imp.push(_li)
   const la=liqAnalysis(d),buf=la?la.S:0
-  if(la&&la.gap>0.5)imp.push({k:'liq',title:'Interessi non percepiti',amt:la.gap,more:moreHTML('liq'),d:`Hai in media <b>${fmt(la.S)}</b> sui conti. Una banca che ti paga una % di interessi sul conto corrente (come <b>${esc(la.nm(la.top.b))}</b>) ti avrebbe dato circa ${fmt(la.top.n,0)} l'anno netti. ${la.realY>=0.5?`Ne hai incassati circa ${fmt(la.realY,0)}: ne lasci circa ${fmt(la.gap,0)}.`:`Non ne hai incassati: li lasci tutti.`} Dettaglio in <a href="#liq-cmp">E la liquidità?</a>.`})
   window._imp=imp
   const isa=getParam('isaTradeFee')
   const tImp=imp.reduce((s,i)=>s+i.amt,0)
   document.getElementById('bill-imp').innerHTML=billHTML({imp:true,
     tag:'Costi nascosti',
-    num:fmt(tImp),unit:'/anno',
-    sub:'calcolati da noi: non li vedi nell\'estratto conto',
-    intro:'Nessuno ti addebita questi soldi sul conto. Sono soldi che ogni anno non guadagni (interessi, cashback/saveback) o che paghi senza accorgertene, perché sono già dentro il prezzo del fondo. Sono calcoli approssimativi: cambiano se modifichi i valori qui sotto.',
-    items:imp,totLabel:'Totale stimato',
+    num:fmt(tImp),unit:'',
+    sub:`simulati sui movimenti caricati (${periodTxt}): non li vedi nell'estratto conto`,
+    intro:'Nessuno ti addebita questi soldi sul conto. Sono soldi che, nel periodo dei tuoi dati, non hai guadagnato (interessi, cashback/saveback) o che hai pagato senza accorgertene, perché sono già dentro il prezzo del fondo. Sono simulazioni sui tuoi movimenti, con il piano predefinito di ogni banca: non proiettano nulla oltre l\'ultimo movimento caricato.',
+    items:imp,totLabel:'Totale nel periodo',
     empty:'Con i dati caricati non emergono costi nascosti da stimare.',
-    after:(buf>0?'':'<div class="q-law"><b>Interessi sulla liquidità non stimati:</b> inserisci il saldo dei tuoi conti nella sezione Patrimonio per includerli.</div>')+(isa>0?`<div class="q-law"><b>Non incluso nel totale:</b> comprare ETF con InvestoPro Go di Intesa costa circa ${fmt(isa,2)} a operazione. Su Trade Republic i piani di accumulo sono a €0.</div>`:'')})
+    after:(buf>0?'':'<div class="q-law"><b>Interessi sulla liquidità non stimati:</b> inserisci il saldo dei tuoi conti nella sezione Patrimonio per includerli.</div>')+''})
 
-  // — risparmio totale —
-  const grand=tEv*f+tImp
+  // — risparmio totale (solo nel periodo caricato) —
+  const grand=tEv+tImp
   document.getElementById('sum-strip').innerHTML=`<div class="q-sum">
-    <div class="q-sum-num">${fmt(grand)}<small>/anno</small></div>
-    <div class="q-sum-txt"><strong>È quanto potresti risparmiare in un anno</strong>
-      <span>${fmt(tEv*f)} di commissioni già pagate (portate a 12 mesi) + ${fmt(tImp)} di costi nascosti stimati.</span></div>
-    ${days<90?'<div class="q-sum-warn">Hai caricato meno di 3 mesi di movimenti: portare le commissioni a un anno è molto approssimativo.</div>':''}
+    <div class="q-sum-num">${fmt(grand)}</div>
+    <div class="q-sum-txt"><strong>È quanto avresti potuto risparmiare nel periodo dei tuoi dati (${periodTxt})</strong>
+      <span>${fmt(tEv)} di commissioni già pagate + ${fmt(tImp)} di costi nascosti simulati. Nessuna proiezione oltre l'ultimo movimento caricato.</span></div>
   </div>`
 }
 function renderParams(){
-  document.getElementById('params-grid').innerHTML=Object.entries(PARAMS).filter(([k])=>k!=='cashRate').map(([k,p])=>
+  document.getElementById('params-grid').innerHTML=Object.entries(PARAMS).filter(([k])=>k!=='cashRate'&&k!=='saveback').map(([k,p])=>
     `<div class="param-item"><label for="p-${k}">${p.label}</label>
       <div class="param-input"><input type="number" id="p-${k}" value="${p.v}" min="${p.min}" max="${p.max}" step="${p.step}" onchange="recalcImplicit()"><span class="unit">${p.unit}</span></div>
       <span class="param-note">${p.note}</span></div>`).join('')
@@ -2646,7 +2708,7 @@ function renderResults(data){
   _lastData=data;allTx=data.txs
   const{txs,internalTx}=data
   // stato filtri: ogni analisi riparte da "Tutto"
-  filterMonths=0;customFrom=null;customTo=null;activeMonthFilter=null;activeBankFilter=null;activeFilter='all'
+  filterMonths=0;customFrom=null;customTo=null;activeMonthFilter=null;activeBankFilter=null;activeFilter='all';try{txResetView()}catch(e){};try{txResetView()}catch(e){}
   document.querySelectorAll('#period-bar .filter-btn[data-p]').forEach(b=>b.classList.toggle('active',b.dataset.p==='0'))
   ;['range-from','range-to'].forEach(id=>{const e=document.getElementById(id);if(e)e.value=''})
   const rc=document.getElementById('range-clear');if(rc)rc.style.display='none'
@@ -2665,7 +2727,7 @@ function renderResults(data){
     document.getElementById('dedup-sec').style.display='block'
     document.getElementById('dedup-table').innerHTML=internalTx.slice(0,15).map(t=>
       `<div class="row"><div><div class="rn">${esc(t.detail||t.op)}</div><div class="rs">${fmtDate(t.date)} · ${esc(bn(t.source))} · ${esc(t.internalNote||'Trasferimento interno')}</div></div>
-       <div style="display:flex;align-items:center;gap:8px"><span class="badge bp">Escluso</span>
+       <div style="display:flex;align-items:center;gap:8px"><span class="badge bp">Escluso</span><button class="filter-btn" style="padding:.15rem .6rem;font-size:12px" onclick="unmarkInternal(${allTx.indexOf(t)})">Non è un mio spostamento</button>
        <span class="rv" style="color:var(--ink-ter)">${t.amount<0?'−':'+'}${fmt(t.amount)}</span></div></div>`).join('')+
       (internalTx.length>15?`<div class="q-note">+ altri ${internalTx.length-15} esclusi</div>`:'')
   }else document.getElementById('dedup-sec').style.display='none'
@@ -2786,7 +2848,7 @@ const srcList=ks=>'<ul class="q-srcs">'+ks.map(k=>`<li><a href="${SRC[k][1]}" ta
 const MORE={
  liq:{q:'Cosa sono gli interessi sulla liquidità?',t:`Sono quello che la banca ti paga ogni anno sui soldi che lasci fermi. Ci sono due tipi di conto.</p><p><b>Conto corrente.</b> È quello di tutti i giorni (stipendio, spesa). Alcune banche pagano interessi lordi anche sul conto corrente (Revolut e Trade Republic), altre no (Intesa Sanpaolo e UniCredit).</p><p>Per esempio, BBVA offre il 4% lordo annuo per i primi 6 mesi, solo se il conto viene aperto entro l'11/12/2026.</p><p><b>Conto di deposito.</b> È pensato per i risparmi: ci versi dei soldi e maturano interessi, di solito più alti. Per spenderli devi prima spostarli sul conto corrente.</p><p><b>Interessi lordi e netti.</b> Il tasso è annuo e lordo: con il 2% lordo prendi 2 € l'anno ogni 100 € fermi. Il tasso lo decide ogni banca.</p><p><b>Le tasse.</b> Gli interessi sono tassati al 26%: su 1.000 € al 2% lordo gli interessi sono 20 €, e ti restano 0,74 × 20 = 14,80 €. Alcune banche sono sostituti d'imposta: trattengono loro l'imposta e ti pagano gli interessi già netti, e non devi dichiarare nulla. Se la tua banca non lo fa, l'imposta la dichiari tu.`,s:['dep','ade','mir','bbvacc']},
  sb:{q:'Cos\'è il cashback/saveback?',t:`Ogni volta che paghi con la carta, alcune banche ti restituiscono una piccola percentuale di quello che spendi. Se la somma ti viene accreditata sul conto, di solito si chiama <b>cashback</b>. Se invece viene investita a tuo nome, si chiama <b>saveback</b>. <b>Esempio:</b> con l'1%, se spendi 100 € ne torna 1 €, sul conto o investito, a seconda della banca.</p><p><b>Le regole cambiano da banca a banca.</b> Per esempio, BBVA, in promozione per chi apre il conto entro l'11/12/2026, accredita sul conto il 4% sugli acquisti con la carta di debito per i primi 6 mesi, sulle prime 210 € di spesa al mese (fino a 50 € in tutto). Con Trade Republic il saveback viene investito: una carta può dare l'1% sui pagamenti idonei, fino a un massimo di 15 € al mese, e chiedere di versare almeno 50 € al mese in un piano di accumulo.</p><p><b>Perché la nostra cifra è ottimistica.</b> Calcoliamo l'1% su tutta la tua spesa con carta, senza massimali mensili e senza condizioni (per esempio i 50 € al mese del piano di accumulo). Quello che avresti davvero potrebbe essere più basso, o zero.`,s:['bbvacb','trsb']},
- gest:{q:'Cosa sono le commissioni di gestione?',t:`Quando metti i soldi in un fondo, chi lo gestisce si fa pagare ogni anno una piccola percentuale di quello che hai investito. Nessuno ti manda un conto da pagare: la percentuale viene tolta direttamente dal valore del tuo investimento, ed è per questo che non la vedi sull'estratto conto. <b>Esempio:</b> con una commissione del 2% l'anno, su 1.000 € ne paghi 20 ogni anno.</p><p><b>Ci sono due tipi di fondi.</b> Nel <b>fondo attivo</b> un gestore sceglie dove investire e cerca di fare meglio del mercato: costa di più. Nel <b>fondo passivo</b> (detto anche indicizzato) non si sceglie niente: si copia un indice, cioè un elenco di aziende, e costa molto meno. L'<b>ETF</b> è un tipo di fondo passivo che si compra e si vende in borsa come un'azione.</p><div class="q-ch"><div class="q-ch-t">10.000 € investiti per 10 anni, stesso rendimento lordo (7% l\'anno)</div><div class="q-ch-r"><span>Costo 2% l\'anno<br><small>come un fondo attivo caro</small></span><div class="q-ch-b"><i style="width:85%"></i></div><b>16.300 €</b></div><div class="q-ch-r"><span>Costo 0,3% l\'anno<br><small>come un ETF</small></span><div class="q-ch-b q-ch-g"><i style="width:100%"></i></div><b>19.100 €</b></div><div class="q-ch-d">Differenza: circa <b>2.800 €</b> in 10 anni, solo per i costi.</div><div class="q-ch-n">Esempio semplificato: rendimento lordo 7% l\'anno meno il costo annuo, uguale per i due. Non è una previsione. Per un ordine di grandezza reale: secondo l\'ESMA, nei fondi azionari UE degli ultimi 10 anni i costi annui medi sono circa 1,4% per gli attivi e 0,3% per i passivi.</div></div><p><b>Esistono diversi tipi di commissioni.</b> Noi calcoliamo solo i costi ricorrenti.<br>• <b>Costi ricorrenti</b> (o commissioni di gestione): ogni anno vengono tolti dal patrimonio del fondo, quindi il tuo investimento vale un po' meno senza nessun addebito sul conto. <b>Sono gli unici che calcoliamo.</b><br>• <b>Commissioni di performance</b> (o di incentivo): le chiedono alcuni fondi attivi se il fondo guadagna più di un obiettivo prefissato. Anche queste gravano sul patrimonio del fondo. <i>Per ora non le calcoliamo.</i><br>• <b>Commissioni di entrata e di uscita</b>: non sono a carico del fondo ma di chi compra o vende le quote, e vengono tolte direttamente dalla somma che investi o che incassi. Sono un costo reale. <i>Per ora non le calcoliamo: le aggiungeremo in futuro, quando avremo un archivio dei fondi con i loro costi.</i><br>• <b>Commissioni di negoziazione</b>: le paghi alla banca o al broker quando compri o vendi un ETF in borsa, di solito una cifra fissa a operazione che dipende dalla banca e dal piano scelto. <i>Per ora non le calcoliamo.</i></p><p><b>Anche le banche con filiali.</b> Alcune permettono di comprare in autonomia ETF e fondi passivi dall'app o dal sito, senza passare da un fondo gestito. Ma investire ha comunque dei costi di negoziazione: per esempio, secondo le condizioni pubblicate da InvestoPro (gruppo Intesa Sanpaolo), nell'offerta Go un ordine su ETF o azioni di Borsa Italiana costa 4,90 €, mentre nelle condizioni standard costa 12 € (9 € per i clienti della banca).</p><p><b>Dove trovarli.</b> Prima di comprare, i costi stimati sono nel KID, il documento informativo che ogni fondo deve mettere a disposizione. Dopo, la banca ti manda ogni anno il rendiconto su costi e oneri con quelli effettivamente pagati.`,s:['bdinv','bdi','consob','esma','invgo','invcond']}
+ gest:{q:'Cosa sono le commissioni di gestione?',t:`Quando metti i soldi in un fondo, chi lo gestisce si fa pagare ogni anno una piccola percentuale di quello che hai investito. Nessuno ti manda un conto da pagare: la percentuale viene tolta direttamente dal valore del tuo investimento, ed è per questo che non la vedi sull'estratto conto. <b>Esempio:</b> con una commissione del 2% l'anno, su 1.000 € ne paghi 20 ogni anno.</p><p><b>Ci sono due tipi di fondi.</b> Nel <b>fondo attivo</b> un gestore sceglie dove investire e cerca di fare meglio del mercato: costa di più. Nel <b>fondo passivo</b> (detto anche indicizzato) non si sceglie niente: si copia un indice, cioè un elenco di aziende, e costa molto meno. L'<b>ETF</b> è un tipo di fondo passivo che si compra e si vende in borsa come un'azione.</p><div class="q-ch"><div class="q-ch-t">10.000 € investiti per 10 anni, stesso rendimento lordo (7% l\'anno)</div><div class="q-ch-r"><span>Costo 2% l\'anno<br><small>come un fondo attivo caro</small></span><div class="q-ch-b"><i style="width:85%"></i></div><b>16.300 €</b></div><div class="q-ch-r"><span>Costo 0,3% l\'anno<br><small>come un ETF</small></span><div class="q-ch-b q-ch-g"><i style="width:100%"></i></div><b>19.100 €</b></div><div class="q-ch-d">Differenza: circa <b>2.800 €</b> in 10 anni, solo per i costi.</div><div class="q-ch-n">Esempio semplificato: rendimento lordo 7% l\'anno meno il costo annuo, uguale per i due. Non è una previsione. Per un ordine di grandezza reale: secondo l\'ESMA, nei fondi azionari UE degli ultimi 10 anni i costi annui medi sono circa 1,4% per gli attivi e 0,3% per i passivi.</div></div><p><b>Esistono diversi tipi di commissioni.</b> Noi calcoliamo solo i costi ricorrenti.<br>• <b>Costi ricorrenti</b> (o commissioni di gestione): ogni anno vengono tolti dal patrimonio del fondo, quindi il tuo investimento vale un po' meno senza nessun addebito sul conto. <b>Li calcoliamo per ogni banca che hai caricato, con una percentuale tipica che dipende dal tipo di fondo (attivo o passivo).</b><br>• <b>Commissioni di performance</b> (o di incentivo): le chiedono alcuni fondi attivi se il fondo guadagna più di un obiettivo prefissato. Anche queste gravano sul patrimonio del fondo. <i>Per ora non le calcoliamo.</i><br>• <b>Commissioni di entrata e di uscita</b>: non sono a carico del fondo ma di chi compra o vende le quote, e vengono tolte direttamente dalla somma che investi o che incassi. Sono un costo reale. <i>Per ora non le calcoliamo: le aggiungeremo in futuro, quando avremo un archivio dei fondi con i loro costi.</i><br>• <b>Commissioni di negoziazione</b>: le paghi alla banca o al broker quando compri o vendi un ETF in borsa, di solito una cifra fissa a operazione che dipende dalla banca e dal piano scelto. <i>Per ora non le calcoliamo.</i></p><p><b>Anche le banche con filiali.</b> Alcune permettono di comprare in autonomia ETF e fondi passivi dall'app o dal sito, senza passare da un fondo gestito. Ma investire ha comunque dei costi di negoziazione: per esempio, secondo le condizioni pubblicate da InvestoPro (gruppo Intesa Sanpaolo), nell'offerta Go un ordine su ETF o azioni di Borsa Italiana costa 4,90 €, mentre nelle condizioni standard costa 12 € (9 € per i clienti della banca).</p><p><b>Dove trovarli.</b> Prima di comprare, i costi stimati sono nel KID, il documento informativo che ogni fondo deve mettere a disposizione. Dopo, la banca ti manda ogni anno il rendiconto su costi e oneri con quelli effettivamente pagati.`,s:['bdinv','bdi','consob','esma','invgo','invcond']}
 }
 function moreHTML(k){const m=MORE[k];return `<details class="q-more"><summary>${m.q}</summary><div><p>${m.t}</p><div class="q-src">Fonti ufficiali${srcList(m.s)}</div></div></details>`}
 const CHAPS=[{id:'liq',t:'Interessi non percepiti',t0:488.3},{id:'sb',t:'Cashback/saveback non ottenuto',t0:551.2},{id:'gest',t:'Commissioni di gestione',t0:591.2}]
@@ -2795,7 +2857,7 @@ function renderExplain(){
   el.dataset.done=1
   el.innerHTML=`<div class="q-expl"><h3>Guarda la spiegazione</h3>
     <p class="q-note" style="margin:0 0 .7rem">Un video di circa dodici minuti, per chi parte da zero: spiega i modi di tenere i soldi, gli errori più comuni, interessi sulla liquidità, cashback e saveback e commissioni di gestione. Usa solo fonti ufficiali, elencate sotto ogni voce.</p>
-    <div class="q-vid"><video id="q-video" controls preload="none" playsinline><source src="video/spiegazione_costi.mp4" type="video/mp4"></video>
+    <div class="q-vid"><video id="q-video" controls preload="none" playsinline><source src="video/spiegazione_costi.mp4" type="video/mp4"><source src="video/spiegazione_costi.webm" type="video/webm"></video>
       <div class="q-vid-ch"><span>Vai a:</span>${CHAPS.map(e=>`<button class="q-btn" type="button" onclick="seekVid(${e.t0},'${e.id}')">${e.t}</button>`).join('')}</div></div></div>`
 }
 function seekVid(t,id){
@@ -2899,10 +2961,10 @@ function wipeData(){
 // ── Video di presentazione sulla pagina iniziale ──
 ;(function(){const h=document.querySelector('.land-h');if(!h)return
   const w=document.createElement('div');w.className='q-lv'
-  w.innerHTML='<button type="button" class="q-lv-b" aria-expanded="false">▶ Guarda come funziona (1 minuto)</button><div class="q-lv-p" hidden><video id="q-launch" controls preload="none" playsinline poster="data:image/jpeg;base64,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"><source src="video/lancio.mp4" type="video/mp4"></video><p class="q-lv-n" hidden>In questa copia il video non è incluso. Lo trovi nel sito o nella versione con video.</p></div>'
+  w.innerHTML='<button type="button" class="q-lv-b" aria-expanded="false">▶ Guarda come funziona (poco più di 1 minuto)</button><div class="q-lv-p" hidden><video id="q-launch" controls preload="none" playsinline poster="data:image/jpeg;base64,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"><source src="video/lancio.mp4" type="video/mp4"><source src="video/lancio.webm" type="video/webm"></video><p class="q-lv-n" hidden>In questa copia il video non è incluso. Lo trovi nel sito o nella versione con video.</p></div>'
   const off=h.querySelector('.q-offline');off?h.insertBefore(w,off):h.appendChild(w)
   const b=w.querySelector('.q-lv-b'),p=w.querySelector('.q-lv-p'),v=w.querySelector('video'),n=w.querySelector('.q-lv-n')
-  b.addEventListener('click',()=>{const open=p.hidden;p.hidden=!open;b.setAttribute('aria-expanded',open);b.textContent=open?'✕ Chiudi il video':'▶ Guarda come funziona (1 minuto)';if(!open)v.pause();else if(typeof track==='function')track('launch_video_open')})
+  b.addEventListener('click',()=>{const open=p.hidden;p.hidden=!open;b.setAttribute('aria-expanded',open);b.textContent=open?'✕ Chiudi il video':'▶ Guarda come funziona (poco più di 1 minuto)';if(!open)v.pause();else if(typeof track==='function')track('launch_video_open')})
   const last=v.querySelector('source:last-of-type');last.addEventListener('error',()=>{v.hidden=true;n.hidden=false})
 })()
 
@@ -2921,6 +2983,271 @@ runDemo=function(){
     })
     const p=document.getElementById('sim-pac');if(p){p.value=300;renderSimulation()}
   },0)
+}
+
+// ─── MOTORE CATEGORIE v2 ──────────────────────────────────────────
+// Regole base uguali per tutte le banche (esercenti noti, parole nella descrizione),
+// sovrascritte dalle regole specifiche di banca (categoria Intesa, codice MCC di Trade Republic)
+// quando queste sono precise, e infine dalle correzioni dell'utente.
+
+// ── tabelle esistenti, corrette ─────────────────────────────────
+Object.assign(CAT_MAP,{
+  'Riscaldamento':{l:'Utenze',i:'⚡',t:'expense'},
+  'Tempo libero varie':{l:'Svago',i:'🎮',t:'expense'},
+  'Imposte, bolli e commissioni':{l:'Commissioni',i:'💸',t:'expense'},
+  'Bonifici in uscita':{l:'Bonifico in uscita',i:'➡️',t:'expense'},
+  'Bonifici ricevuti':{l:'Bonifici ricevuti',i:'⬅️',t:'income'},
+  'Entrate varie':{l:'Bonifici ricevuti',i:'⬅️',t:'income'}
+})
+Object.assign(TR_MCC,{
+  '7999':{l:'Svago',i:'🎮'},'5945':{l:'Svago',i:'🧸'},
+  '7941':{l:'Sport',i:'🏋️'},'5941':{l:'Sport',i:'⚽'}
+})
+// etichette generiche: la regola base può sostituirle (le specifiche della banca no)
+const GENERIC_LABELS=new Set(['Altro','Altre uscite','Addebito vario','Altre entrate','Altro (carta TR)','Shopping','Bonifico in uscita','Bonifici ricevuti'])
+
+// ── elenco delle correzioni manuali, con il tipo che comportano ───
+const PICK_LIST=[
+  ['Supermercato','🛒','expense'],['Ristoranti','🍽️','expense'],['Affitto','🏠','expense'],['Utenze','⚡','expense'],
+  ['Casa','🏡','expense'],['Trasporti','🚗','expense'],['Carburante','⛽','expense'],['Auto','🔧','expense'],
+  ['Viaggi','✈️','expense'],['Telefonia','📱','expense'],['Abbonamenti','📺','expense'],['Sport','🏋️','expense'],
+  ['Svago','🎮','expense'],['Spettacoli','🎭','expense'],['Shopping','🛍️','expense'],['Abbigliamento','👕','expense'],
+  ['Tecnologia','💻','expense'],['Salute','💊','expense'],['Cura persona','💆','expense'],['Formazione','📚','expense'],
+  ['Assicurazioni','🛡️','expense'],['Imposte e tasse','🏛️','expense'],['Regali','🎁','expense'],['Gioco','🎰','expense'],
+['Commissioni','💸','expense'],['Altro','💳','expense'],
+  ['Stipendio','💰','income'],['Regali/Paghette','🎁','income'],['Poker/Scommesse','🎰','income'],['Rimborso','↩️','income'],
+  ['Investimento','📈','investment'],['Disinvestimento','📉','disinvestment'],
+  ['Trasf. interno','🔄','internal']
+]
+PICKER_CATS.length=0
+PICK_LIST.forEach(([l,i])=>PICKER_CATS.push({l,i}))
+const PICK_TYPE={};PICK_LIST.forEach(([l,,t])=>PICK_TYPE[l]=t)
+
+// ── testo normalizzato (minuscolo, senza accenti) ─────────────────
+function nrm(s){return String(s==null?'':s).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'')}
+function txText(t){return nrm((t.op||'')+' '+(t.detail||'')+' '+(t.cat||''))}
+
+// ── dizionario base: [etichetta, icona, espressione] ───────────────
+// L'ordine conta: vince la prima che corrisponde.
+const BASE_RULES=[
+  ['Gioco','🎰',/\b(pokerstars|snai|sisal|lottomatica|eurobet|betfair|william hill|bwin|unibet|goldbet|planetwin|betflag|bet365|sportbet|superenalotto|gratta e vinci|scommess\w*|casino|slot machine|lotto)\b/],
+  ['Imposte e tasse','🏛️',/\b(agenzia (delle )?entrate\w*|f24|inps|imu|tari|pagopa|pago pa|tasse|equitalia)\b/],
+  ['Affitto','🏠',/\b(affitto|locazione|canone di locazione|pigione)\b/],
+  ['Assicurazioni','🛡️',/\b(unipol\w*|generali|allianz|axa|zurich|reale mutua|cattolica|vittoria assicur\w*|linear assicur\w*|direct line|genertel|verti|amissima|itas|assicurazion\w*|polizza|rca)\b/],
+  ['Utenze','⚡',/\b(enel|plenitude|eni plenitude|edison|a2a|iren|hera|acea|sorgenia|illumia|octopus energy|e\.?on|acquedotto|energia|elettric\w*|gas|luce|acqua|rifiuti|metano|teleriscaldamento|riscaldamento|pellet)\b/],
+  ['Telefonia','📱',/\b(tim|vodafone|wind ?tre|windtre|iliad|fastweb|ho\.? mobile|kena mobile|very mobile|poste ?mobile|tiscali|lyca ?mobile|coop voce|ricarica telefonica)\b/],
+  ['Abbonamenti','📺',/\b(netflix|spotify|disney ?\+?|prime video|amazon prime|dazn|youtube|apple\.com\/bill|apple services|itunes|icloud|google one|google storage|chatgpt|openai|anthropic|claude\.ai|now ?tv|sky|audible|kindle unlimited|paramount|crunchyroll|adobe|microsoft 365|office 365|dropbox|notion|canva|nordvpn|expressvpn|deezer|tidal|apple music)\b/],
+  ['Viaggi','✈️',/\b(easy ?jet|ryan ?air|wizz ?air|lufthansa|alitalia|ita airways|air france|klm|british airways|iberia|vueling|volotea|emirates|qatar airways|turkish airlines|delta air\w*|united airlines|american airlines|swiss air\w*|air europa|norwegian air\w*|finnair|tap air\w*|aer lingus|etihad|singapore airlines|airbnb|booking(\.com| com)?|hotel|hostel|ostello|expedia|trivago|skyscanner|edreams|opodo|kayak|lastminute|tripadvisor|trainline|interrail|bed and breakfast|b&b|resort|camping|villaggio turistico)\b/],
+  ['Pedaggi','🛣️',/\b(telepass|autostrad\w*|pedaggio|viacard)\b/],
+  ['Carburante','⛽',/\b(eni ?live|agip|q8|ip station|tamoil|esso|shell|total ?energies|carburant\w*|distributore|stazione di servizio|benzina|gasolio|keropetrol|api-ip)\b/],
+  ['Trasporti','🚗',/\b(trenitalia|italo treno|nuovo trasporto viaggiatori|trenord|atm milano|atm|gtt|atac|flixbus|blablacar|uber|bolt|free ?now|share ?now|taxi|parcheggio|parking|autobus|metropolitana|traghetto|tirrenia|moby|grimaldi|snav|gnv|ztl)\b/],
+  ['Auto','🔧',/\b(officina|gommista|carrozzeria|autolavaggio|revisione auto|bollo auto|aci|autoricambi)\b/],
+  ['Supermercato','🛒',/\b(coop|conad|esselunga|carrefour|lidl|eurospin|md|aldi|pam|penny market|iper|despar|eurospar|interspar|famila|bennet|tigros|unes|naturasi|iperal|migross|crai|sidis|todis|dok|supermercat\w*|alimentari|macelleria|pescheria|ortofrutta|panificio)\b/],
+  ['Ristoranti','🍽️',/\b(ristorante|trattoria|osteria|pizzeria|pizza|sushi|bar|caffe|caffetteria|pasticceria|gelateria|gelato|tavola calda|paninoteca|kebab|hamburger|burger|mcdonald\w*|kfc|starbucks|autogrill|spizzico|domino\w*|just ?eat|glovo|deliveroo|uber ?eats|foodinho|wagamama|poke|brasserie|agriturismo|pub|birreria|bistrot|bistro|rosticceria|cocktail)\b/],
+  ['Spettacoli','🎭',/\b(cinema|uci cinemas|the space cinema|teatro|concerto|ticketone|ticketmaster|museo|mostra)\b/],
+  ['Sport','🏋️',/\b(palestra|fitness|virgin active|mcfit|anytime fitness|decathlon|piscina|nuoto|tennis|padel|calcetto|yoga|pilates|crossfit|skipass|impianti di risalita)\b/],
+  ['Svago','🎮',/\b(gardaland|disneyland|bowling|escape room|discoteca|nightclub|steam|playstation|psn|xbox|nintendo|epic games|gamestop|parco divertimenti)\b/],
+  ['Tecnologia','💻',/\b(mediaworld|unieuro|euronics|trony|monclick|eprice|apple store|apple retail|samsung|huawei|xiaomi|lenovo|dell|back market)\b/],
+  ['Casa','🏡',/\b(ikea|leroy merlin|brico\w*|maisons du monde|condominio|spese condominiali|amministratore|idraulico|elettricista|ferramenta|arredament\w*|mobili|lavanderia)\b/],
+  ['Salute','💊',/\b(farmacia|parafarmacia|ospedale|clinica|ambulatorio|studio medico|dentista|odontoiatr\w*|oculista|ottica|fisioterap\w*|poliambulatorio|asl|veterinari\w*|amplifon|analisi mediche)\b/],
+  ['Cura persona','💆',/\b(parrucchier\w*|barbier\w*|barber|estetist\w*|centro estetico|beauty|sephora|douglas|kiko|profumeria|massagg\w*)\b/],
+  ['Abbigliamento','👕',/\b(zalando|shein|zara|h&m|bershka|pull&bear|stradivarius|primark|uniqlo|nike|adidas|asos|calzedonia|intimissimi|ovs|oviesse|abbigliamento|calzature|scarpe)\b/],
+  ['Formazione','📚',/\b(universita|politecnico|scuola|udemy|coursera|tasse universitarie|corso di)\b/],
+  ['Shopping','🛍️',/\b(amazon|amzn|ebay|aliexpress|temu|vinted)\b/]
+]
+// entrate riconoscibili dal testo (solo importi positivi)
+const BASE_INCOME=[
+  ['Stipendio','💰',/\b(stipendio|emolument\w*|retribuzion\w*|payroll|salary|busta paga|competenze)\b/],
+  ['Rimborso','↩️',/\b(rimborso|storno|refund|restituzione)\b/],
+  ['Interessi','💶',/\b(interess\w*)\b/],
+  ['Affitto incass.','🏠',/\b(affitto|locazione)\b/]
+]
+const INVEST_WORDS=/\b(etf|piano di accumulo|acquisto titoli|vendita titoli|sottoscrizione fond\w*|fondi? comuni?|fondo pensione|fondo di investimento|trade republic|scalable|directa|degiro|interactive brokers|etoro|bitpanda|coinbase|binance|kraken|obbligazion\w*|btp|azioni|titoli di stato)\b/
+const BROKER_WORDS=/\b(trade republic|scalable|directa|degiro|interactive brokers|etoro|bitpanda|coinbase|binance|kraken)\b/
+
+function baseRule(t){
+  for(const [l,i,re] of BASE_RULES) if(re.test(t)) return {l,i}
+  return null
+}
+function incomeRule(t){
+  for(const [l,i,re] of BASE_INCOME) if(re.test(t)) return {l,i}
+  return null
+}
+
+// ── classificazione di un movimento ────────────────────────────────
+function classify(tx){
+  if(tx._cl){return}
+  tx._cl=true
+  const txt=txText(tx)
+  if(tx.source==='intesa')normCat(tx)
+  else if(!tx.catLabel){
+    const m=tx.mcc?TR_MCC[tx.mcc+'']:null
+    tx.catLabel=m?m.l:(tx.cat||'Altro');tx.catIcon=m?m.i:'💳'
+    if(!tx.catType)tx.catType=tx.amount>0?'income':'expense'
+  }
+  // un solo bonifico con affitto + riscaldamento/utenze: tutto sotto Affitto
+  if(tx.catType==='expense'&&tx.amount<0&&tx.catLabel==='Utenze'&&/\b(affitto|locazione|pigione)\b/.test(txt)){tx.catLabel='Affitto';tx.catIcon='🏠'}
+  if(tx._forceType==='investment'){tx.catType='investment';tx.catLabel='Versamento su broker';tx.catIcon='📈';return}
+  // commissioni: hanno sempre la loro etichetta e contano come costo
+  if(tx.isCommission||tx.catLabel==='Commissioni'){
+    tx.catLabel='Commissioni';tx.catIcon='💸';tx.catType='expense'
+    if(!tx.isCommission){tx.isCommission=true;tx.commDesc='Imposte e commissioni (categoria della banca)';tx.commEvit=false;tx.commTipo='altro';tx.commCost=Math.abs(tx.amount)}
+    return
+  }
+  // investimento segnato dalla banca ma con un esercente noto nel testo: in realtà è una spesa
+  if(tx.source==='intesa'&&(tx.catType==='investment'||tx.catType==='disinvestment')&&tx.amount<0&&!INVEST_WORDS.test(txt)){
+    const r=baseRule(txt)
+    if(r){tx.catLabel=r.l;tx.catIcon=r.i;tx.catType='expense';return}
+  }
+  // il contrario: spesa generica che nel testo parla di titoli o broker
+  if((tx.catType==='expense')&&GENERIC_LABELS.has(tx.catLabel)&&tx.amount<0&&INVEST_WORDS.test(txt)){
+    tx.catLabel='Investimento';tx.catIcon='📈';tx.catType='investment';return
+  }
+  if(tx.catType==='income'&&tx.amount>0&&GENERIC_LABELS.has(tx.catLabel)){
+    const r=incomeRule(txt);if(r){tx.catLabel=r.l;tx.catIcon=r.i}
+    else if(tx.catLabel==='Altro'){tx.catLabel='Altre entrate';tx.catIcon='💶'}
+    return
+  }
+  // regole base sulla descrizione, solo dove la banca non è stata precisa
+  if(tx.catType==='expense'&&tx.amount<0&&GENERIC_LABELS.has(tx.catLabel)){
+    const r=baseRule(txt)
+    if(r){tx.catLabel=r.l;tx.catIcon=r.i}
+  }
+}
+
+// ── regole apprese e correzioni dell'utente (hanno sempre l'ultima parola) ──
+function pickApply(tx,l,i){
+  const ty=PICK_TYPE[l]
+  tx.catLabel=l;tx.catIcon=i
+  if(ty==='internal'){tx.isInternal=true;tx.internalNote='Segnato da te come spostamento tra i tuoi conti';return}
+  if(tx.isInternal&&!tx._pair){tx.isInternal=false;tx.internalNote=undefined}
+  if(ty==='expense'&&tx.amount<0)tx.catType='expense'
+  else if(ty==='income'&&tx.amount>0)tx.catType='income'
+  else if(ty==='investment'&&tx.amount<0)tx.catType='investment'
+  else if(ty==='disinvestment'&&tx.amount>0)tx.catType='disinvestment'
+}
+function applyRules(txs){txs.forEach(tx=>{const r=merchantRules[mKey(tx)];if(r)pickApply(tx,r.l,r.i)})}
+
+function selectCat(txIdx,label,icon){
+  closePicker();_pIdx=txIdx;_pCat={l:label,i:icon}
+  const tx=allTx[txIdx],merchant=(tx.detail||tx.op||'').slice(0,40)
+  document.getElementById('rule-q').textContent=`Applicare "${label}" a tutte le transazioni da questo merchant?`
+  document.getElementById('rule-sub').textContent=merchant
+  document.getElementById('rule-all-btn').onclick=()=>applyCorrection(true)
+  document.getElementById('rule-once-btn').onclick=()=>applyCorrection(false)
+  document.getElementById('rule-overlay').classList.add('open')
+}
+function recomputeKeepView(){
+  const keep={fm:filterMonths,cf:customFrom,ct:customTo,am:activeMonthFilter,ab:activeBankFilter,af:activeFilter,cat:new Set(catFilter),sort:{...txSort},
+    rf:(document.getElementById('range-from')||{}).value,rt:(document.getElementById('range-to')||{}).value,y:window.scrollY}
+  renderResults(analyze(allTx))
+  filterMonths=keep.fm;customFrom=keep.cf;customTo=keep.ct;activeMonthFilter=keep.am;activeBankFilter=keep.ab;catFilter=keep.cat;txSort=keep.sort
+  document.querySelectorAll('#period-bar .filter-btn[data-p]').forEach(b=>b.classList.toggle('active',b.dataset.p===String(keep.fm)))
+  const a=document.getElementById('range-from'),b=document.getElementById('range-to');if(a&&keep.rf)a.value=keep.rf;if(b&&keep.rt)b.value=keep.rt
+  document.querySelectorAll('#filter-bar [data-b]').forEach(x=>x.classList.toggle('active',x.dataset.b===keep.ab))
+  renderCharts();renderTxTable(keep.af)
+  window.scrollTo(0,keep.y)
+}
+function applyCorrection(saveRule){
+  document.getElementById('rule-overlay').classList.remove('open')
+  if(_pIdx===null||!_pCat)return
+  const tx=allTx[_pIdx],key=mKey(tx),{l,i}=_pCat
+  if(saveRule){
+    merchantRules[key]={l,i};let n=0
+    allTx.forEach(t=>{if(mKey(t)===key){pickApply(t,l,i);n++}})
+    learnedCount.n++
+    const b=document.getElementById('learned-badge');b.style.display='inline-flex'
+    b.textContent=`${learnedCount.n} regola${learnedCount.n!==1?'e':''} appresa${learnedCount.n!==1?'e':''}`
+    showToast(`✓ Regola salvata — <strong>${esc(l)}</strong> applicata a ${n} transazione${n>1?'i':''}`)
+  }else{pickApply(tx,l,i);showToast(`✓ Categoria aggiornata — <strong>${esc(l)}</strong>`)}
+  _pIdx=null;_pCat=null
+  recomputeKeepView()
+}
+function unmarkInternal(i){
+  const t=allTx[i];if(!t)return
+  ;[t,t._pair].forEach(x=>{if(x){x.isInternal=false;x.internalNote=undefined;x._pair=null;x._noPair=true}})
+  recomputeKeepView()
+}
+
+// ── commissioni: regole in più ─────────────────────────────────────
+COMM_RULES.push({pat:/spese (di )?tenuta conto|canone (mensile )?conto|spese conto/i,desc:'Spese di tenuta conto',unitCost:null,evit:true,alt:'Conti senza canone',tipo:'canone'})
+
+// ── giroconti tra i tuoi conti ─────────────────────────────────────
+// 1) stessa banca (ricarica di una carta prepagata propria, bonifico sbagliato tornato indietro)
+// 2) banche diverse: uscita e entrata con importo uguale, date vicine, abbinate una a una.
+//    Non si usano nomi o cognomi: un bonifico a un familiare resta una spesa.
+const BANK_WORDS={tr:/trade republic/,revolut:/revolut/,unicredit:/unicredit/,intesa:/intesa|sanpaolo/}
+function deduplicate(txs){
+  const sorted=[...txs].sort((a,b)=>a.date-b.date)
+  const DAY=86400000
+  const link=(a,b,note)=>{a.isInternal=true;b.isInternal=true;a.internalNote=note;b.internalNote=note;a._pair=b;b._pair=a}
+  const sameDayKey=tx=>`${tx.date.getFullYear()}-${tx.date.getMonth()}-${tx.date.getDate()}`
+
+  // 1a. ricarica carta prepagata propria, stessa banca e stesso giorno
+  for(let i=0;i<sorted.length;i++){
+    const a=sorted[i]
+    if(a.isInternal||a._noPair)continue
+    if(!(a.amount<0&&/^ricarica carta prepagata$/i.test((a.op||'').trim())))continue
+    for(let j=0;j<sorted.length;j++){
+      if(i===j)continue
+      const b=sorted[j]
+      if(b.isInternal||b._noPair||b.source!==a.source||sameDayKey(a)!==sameDayKey(b))continue
+      if(!(b.amount>0&&/^ricarica$/i.test((b.op||'').trim())))continue
+      if(Math.abs(Math.abs(a.amount)-b.amount)>0.01)continue
+      link(a,b,'Ricarica carta prepagata propria');break
+    }
+  }
+  // 1b. bonifico sbagliato tornato indietro (stessa banca, stesso importo, entro 30 giorni)
+  const REFUND_WORDS=/restitu|ritorno|rimbors/i
+  for(let i=0;i<sorted.length;i++){
+    const a=sorted[i]
+    if(a.isInternal||a._noPair||a.amount>=0)continue
+    for(let j=0;j<sorted.length;j++){
+      if(i===j)continue
+      const b=sorted[j]
+      if(b.isInternal||b._noPair||b.amount<=0||b.source!==a.source)continue
+      if(Math.abs(Math.abs(a.amount)-b.amount)>0.01)continue
+      const dd=(b.date-a.date)/DAY
+      if(dd<0||dd>30)continue
+      if(!REFUND_WORDS.test(b.detail||'')&&!REFUND_WORDS.test(b.op||''))continue
+      link(a,b,'Bonifico restituito (errore)');break
+    }
+  }
+  // 2. banche diverse
+  const transferLike=t=>{
+    if(t.source==='tr')return /^TRANSFER/.test(t.op||'')
+    if(t.source==='revolut')return t.catType==='transfer'||/ricaric|top.?up|trasf|transfer/.test(txText(t))
+    return /bonific|giroc|trasf|ricaric|accredit|sepa|invio|versament/.test(txText(t))
+  }
+  const hint=t=>{
+    const x=txText(t)
+    if(/giroconto|trasferimento tra conti|tra miei conti|a me stesso|proprio conto/.test(x))return true
+    return Object.keys(BANK_WORDS).some(b=>b!==t.source&&BANK_WORDS[b].test(x))
+  }
+  const outs=sorted.filter(t=>!t.isInternal&&!t._noPair&&t.amount<0&&transferLike(t))
+  const ins=sorted.filter(t=>!t._pair&&!t._noPair&&t.amount>0&&transferLike(t))
+  const cands=[]
+  outs.forEach(a=>ins.forEach(b=>{
+    if(a.source===b.source)return
+    const h=hint(a)||hint(b)
+    const dAmt=Math.abs(Math.abs(a.amount)-b.amount)
+    const dd=(b.date-a.date)/DAY
+    if(dAmt>(h?1:0.01))return
+    if(dd<-1||dd>(h?5:2))return
+    cands.push({a,b,dAmt,dd:Math.abs(dd),h})
+  }))
+  cands.sort((x,y)=>x.dAmt-y.dAmt||x.dd-y.dd)
+  cands.forEach(c=>{if(c.a.isInternal||c.b._pair)return;link(c.a,c.b,'Spostamento tra i tuoi conti')})
+  // 3. uscita verso un broker (es. Trade Republic) senza il corrispondente nel file
+  const loaded=new Set(sorted.map(t=>t.source))
+  sorted.forEach(t=>{
+    if(t.isInternal||t._noPair||t.amount>=0||t.source==='tr'||t.source==='revolut')return
+    const x=txText(t)
+    if(!BROKER_WORDS.test(x))return
+    if(/trade republic/.test(x)&&loaded.has('tr')){t.isInternal=true;t.internalNote='Probabile versamento su Trade Republic (non trovato l\'accredito)'}
+    else t._forceType='investment'
+  })
+  return sorted
 }
 
 // ─── ANALYTICS (nessun dato bancario: solo nomi di evento) ───
@@ -3253,6 +3580,249 @@ function runDemo(){
   renderResults(analyze(deduped))
 }
 
+// ─── PIANI PER BANCA, INTERESSI E CASHBACK/SAVEBACK: simulazione sui dati caricati ───
+// Le tariffe (con interessi lordi per fasce e cashback/saveback di ogni piano) vengono da tariffe.json.
+// Nessuna proiezione oltre l'ultimo movimento caricato: si simula solo il periodo dei dati.
+TARIFFE={"versione": "2026-10-17", "avviso": "Tariffe pubbliche dei piani consumer, lette dai fogli informativi ufficiali. Dati indicativi: verifica sempre sul sito della banca. null = dato non verificato o non confrontabile. Interessi e cashback/saveback: tassi lordi annui, per fasce di saldo. Costi di negoziazione e custodia dei titoli (campo «etf»): salvati ma non ancora usati nei calcoli.", "banche": {"intesa": {"nome": "Intesa Sanpaolo", "piano_default": "xme", "piani": {"xme": {"nome": "XME Conto", "canone_mese": 8.5, "canone_nota": "€3 di sconto con accredito stipendio o pensione; €8,50 di sconto con alcuni prodotti collegati", "bonifico_online": 0, "bonifico_sportello": 0, "atm_altra_banca": 0, "atm_nota": "€0 secondo il documento; esistono forfait opzionali a pagamento", "ricarica_prepagata": null, "ricarica_nota": "Il documento indica €0 ma negli estratti la voce 'costo ricarica carta prepagata' compare a €1: non confrontabile", "bollo_anno": 34.2, "bollo_nota": "Non dovuto con giacenza media fino a €5.000", "data_doc": "2026-07-01", "fonte": "https://www.intesasanpaolo.com/content/dam/vetrina/trasparenza/it/Documenti/Doc/Pdf/FI/FI-Other/FI-1852.pdf", "fonte2": "https://www.intesasanpaolo.com/content/dam/vetrina/trasparenza/it/Documenti/Doc/Pdf/FI/FI-Other/FI-1245.pdf", "interesse": {"fasce": [{"fino_a": null, "lordo_pct": 0}], "nota": "Remunerazione delle giacenze non prevista (tasso creditore annuo nominale 0,0000%)", "fonte": "https://www.intesasanpaolo.com/content/dam/vetrina/trasparenza/it/Documenti/Doc/Pdf/FI/FI-Other/FI-1245.pdf", "data_doc": "2026-10-01"}, "cashback": {"pct": 0, "tipo": null, "max_mese_eur": null, "nota": "Nessun cashback o rimborso sulla spesa con carta nel foglio informativo", "fonte": "https://www.intesasanpaolo.com/content/dam/vetrina/trasparenza/it/Documenti/Doc/Pdf/FI/FI-Other/FI-1245.pdf", "data_doc": "2026-10-01"}, "etf": {"ordine_pct": 0, "ordine_min": 0, "ordine_fisso": 9, "gratis_mese": 0, "custodia_anno": null, "nota": "ETF e azioni di Borsa Italiana con InvestoPro (gruppo Intesa Sanpaolo): 9 € a ordine per i clienti Intesa, 12 € per gli altri. I costi semestrali di gestione e amministrazione del deposito titoli non sono quantificati in questa fonte.", "fonte": "https://www.investopro.com/resources/docs/it/Condizioni-economiche-InvestoPro-Trading.pdf", "data_doc": null}}, "silver": {"nome": "XME Conto Silver", "canone_mese": 5.9, "canone_nota": "Nessuna condizione di azzeramento indicata nel documento", "bonifico_online": 1.2, "bonifico_sportello": 3.5, "atm_altra_banca": 2, "atm_nota": "Bancomat altre banche area SEPA", "ricarica_prepagata": null, "bollo_anno": 34.2, "bollo_nota": "Non dovuto con giacenza media fino a €5.000", "data_doc": null, "fonte": "https://www.intesasanpaolo.com/content/dam/vetrina/trasparenza/it/Documenti/Doc/Pdf/FI/FI-Other/FI-1841.pdf", "interesse": {"fasce": [{"fino_a": null, "lordo_pct": 0}], "nota": "Tasso creditore annuo nominale 0,0000%", "fonte": "https://www.intesasanpaolo.com/content/dam/vetrina/trasparenza/it/Documenti/Doc/Pdf/FI/FI-Other/FI-1363.pdf", "data_doc": "2026-10-01"}, "cashback": {"pct": 0, "tipo": null, "max_mese_eur": null, "nota": "Nessun cashback o rimborso sulla spesa con carta nel foglio informativo", "fonte": "https://www.intesasanpaolo.com/content/dam/vetrina/trasparenza/it/Documenti/Doc/Pdf/FI/FI-Other/FI-1363.pdf", "data_doc": "2026-10-01"}, "etf": {"ordine_pct": 0, "ordine_min": 0, "ordine_fisso": 9, "gratis_mese": 0, "custodia_anno": null, "nota": "ETF e azioni di Borsa Italiana con InvestoPro (gruppo Intesa Sanpaolo): 9 € a ordine per i clienti Intesa, 12 € per gli altri. I costi semestrali di gestione e amministrazione del deposito titoli non sono quantificati in questa fonte.", "fonte": "https://www.investopro.com/resources/docs/it/Condizioni-economiche-InvestoPro-Trading.pdf", "data_doc": null}}}, "sostituto_imposta": {"plusvalenze": true, "interessi": true, "nota": "", "fonte": null}, "investimenti_tipo": "attivo"}, "unicredit": {"nome": "UniCredit", "piano_default": "genius", "piani": {"genius": {"nome": "Genius", "canone_mese": 1.9, "canone_nota": "Azzerato con accredito mensile di stipendio, pensione o bonifico ricorrente da almeno €750", "bonifico_online": 1.3, "bonifico_online_nota": "Pacchetto bonifici illimitati: €2/mese", "bonifico_sportello": 11.8, "atm_altra_banca": 2, "ricarica_prepagata": null, "bollo_anno": null, "data_doc": null, "fonte": "https://trasparenza.unicredit.it/pdfprod/CC140_CONTO+CORRENTE+GENIUS+.pdf", "interesse": {"fasce": [{"fino_a": 2500, "lordo_pct": 0}, {"fino_a": null, "lordo_pct": 0.001}], "nota": "Tasso creditore annuo nominale: 0% fino a 2.500 €, 0,001% oltre", "fonte": "https://trasparenza.unicredit.it/pdfprod/CC140_CONTO+CORRENTE+GENIUS+.pdf", "data_doc": "2026-10-01"}, "cashback": {"pct": 0, "tipo": null, "max_mese_eur": null, "nota": "Nessun cashback o rimborso sulla spesa con carta nel foglio informativo", "fonte": "https://trasparenza.unicredit.it/pdfprod/CC140_CONTO+CORRENTE+GENIUS+.pdf", "data_doc": "2026-10-01"}, "etf": {"ordine_pct": 0.4, "ordine_min": 11.5, "ordine_fisso": 0, "gratis_mese": 0, "custodia_anno": 126, "nota": "ETF su Borsa Italiana via internet: 0,40% dell'importo, minimo 11,50 € a ordine (DT01 p. 4). Custodia: 126 € l'anno (63 € a semestre) alla voce «altri strumenti finanziari italiani»: il foglio non assegna esplicitamente gli ETF a questa voce. Il foglio indica 4,75 € fissi a operazione per le azioni italiane (non è detto che valgano per gli ETF). Promozioni per i nuovi contratti: commissione 0,10% con minimo 2 € fino al 31/01/2027, custodia gratuita fino al 31/12/2028.", "fonte": "https://trasparenza.unicredit.it/pdfprod/DT01_CONTO+TITOLIServizio+di+custodia+ed+amministrazione+di+titoli+e+strumenti+finanziari.pdf", "data_doc": "2026-10-01"}}, "care": {"nome": "Genius Care", "canone_mese": 4.9, "canone_nota": "Azzerato con almeno €10.000 in prodotti di investimento della categoria gestito", "bonifico_online": 0, "bonifico_online_nota": "Compreso, ordinari e istantanei", "bonifico_sportello": 11.05, "atm_altra_banca": 2, "ricarica_prepagata": null, "bollo_anno": null, "data_doc": "2026-10-01", "fonte": "https://trasparenza.unicredit.it/pdfprod/FIDCC139_FID+CONTO+CORRENTE+Genius+Care.pdf", "fonte2": "https://trasparenza.unicredit.it/pdfprod/CC139_CONTO+CORRENTE+GENIUS+CARE+GENIUS+CARE+TOP.pdf", "interesse": {"fasce": [{"fino_a": 2500, "lordo_pct": 0}, {"fino_a": null, "lordo_pct": 0.001}], "nota": "Tasso creditore annuo nominale: 0% fino a 2.500 €, 0,001% oltre", "fonte": "https://trasparenza.unicredit.it/pdfprod/CC139_CONTO+CORRENTE+GENIUS+CARE+GENIUS+CARE+TOP.pdf", "data_doc": "2026-10-01"}, "cashback": {"pct": 0, "tipo": null, "max_mese_eur": null, "nota": "Nessun cashback o rimborso sulla spesa con carta nel foglio informativo", "fonte": "https://trasparenza.unicredit.it/pdfprod/CC139_CONTO+CORRENTE+GENIUS+CARE+GENIUS+CARE+TOP.pdf", "data_doc": "2026-10-01"}, "etf": {"ordine_pct": 0.4, "ordine_min": 11.5, "ordine_fisso": 0, "gratis_mese": 0, "custodia_anno": 126, "nota": "ETF su Borsa Italiana via internet: 0,40% dell'importo, minimo 11,50 € a ordine (DT01 p. 4). Custodia: 126 € l'anno (63 € a semestre) alla voce «altri strumenti finanziari italiani»: il foglio non assegna esplicitamente gli ETF a questa voce. Il foglio indica 4,75 € fissi a operazione per le azioni italiane (non è detto che valgano per gli ETF). Promozioni per i nuovi contratti: commissione 0,10% con minimo 2 € fino al 31/01/2027, custodia gratuita fino al 31/12/2028.", "fonte": "https://trasparenza.unicredit.it/pdfprod/DT01_CONTO+TITOLIServizio+di+custodia+ed+amministrazione+di+titoli+e+strumenti+finanziari.pdf", "data_doc": "2026-10-01"}}}, "sostituto_imposta": {"plusvalenze": true, "interessi": true, "nota": "", "fonte": null}, "investimenti_tipo": "attivo"}, "revolut": {"nome": "Revolut", "piano_default": "standard", "verificare": "La pagina commissioni indica canone gratuito per tutti i piani, la pagina dei piani indica i canoni qui riportati. Usata la pagina dei piani: da confermare.", "piani": {"standard": {"nome": "Standard", "canone_mese": 0, "bonifico_online": 0, "bonifico_sportello": null, "atm_altra_banca": null, "atm_nota": "Pagina commissioni: gratis fino a 5 prelievi o €200 al mese, poi 2% (min. €1); piano di riferimento non indicato", "ricarica_prepagata": null, "bollo_anno": null, "data_doc": "2026-05-07", "fonte": "https://www.revolut.com/it-IT/legal/standard-fees/", "fonte2": "https://www.revolut.com/it-IT/our-pricing-plans/", "interesse": {"fasce": [{"fino_a": null, "lordo_pct": 0}], "nota": "Il foglio informativo del conto corrente Revolut non prevede interessi sul saldo. I tassi di Revolut sono del Conto deposito senza vincoli, un sottoconto separato (versamenti e prelievi immediati, nessun vincolo di durata) da cui non risulta che si possa pagare con la carta: per questo non sono conteggiati. Qui vale 0.", "fonte": "https://www.revolut.com/it-IT/legal/italy-information-sheet/", "data_doc": "2026-10-15", "deposito_senza_vincoli": {"fasce": [{"fino_a": 3000, "lordo_pct": 2.5}, {"fino_a": null, "lordo_pct": 1.0}], "nota": "Non usato nei calcoli: sottoconto di risparmio, non conto per le spese.", "fonte": "https://www.revolut.com/it-IT/legal/pre-contractual-information-instant-access-savings-account/", "data_doc": "2026-10-15"}}, "cashback": {"pct": 0, "tipo": null, "max_mese_eur": null, "nota": "Il cashback che Revolut pubblicizza è del conto Pro per professionisti. Per i conti personali non risulta nei documenti: contato a 0.", "fonte": "https://www.revolut.com/it-IT/legal/italy-information-sheet/", "data_doc": "2026-10-15"}, "etf": {"ordine_pct": 0.25, "ordine_min": 1, "ordine_fisso": 0, "gratis_mese": 0, "custodia_anno": 0, "nota": "Ordini gratuiti al mese: 0 (dato più prudente: la pagina ETF di Revolut indica 1 con Standard e 3 con Plus, la pagina di assistenza 0 e 0). Oltre la soglia: il maggiore tra 0,25% dell'importo e 1 € (pagina ETF); la pagina di assistenza indica 1 € fisso. Nessuna custodia. I piani di investimento ricorrenti in ETF idonei non hanno commissioni.", "fonte": "https://revolut.com/it-IT/etfs", "fonte2": "https://help.revolut.com/it-IT/help/wealth/stocks/trading-stocks/trading-fees/what-fees-will-i-be-charged-for-my-trading/", "data_doc": null}}, "plus": {"nome": "Plus", "canone_mese": 3.99, "bonifico_online": 0, "bonifico_sportello": null, "atm_altra_banca": null, "atm_nota": "Gratis fino a €200 o 5 prelievi al mese", "ricarica_prepagata": null, "bollo_anno": null, "data_doc": null, "fonte": "https://www.revolut.com/it-IT/our-pricing-plans/", "interesse": {"fasce": [{"fino_a": null, "lordo_pct": 0}], "nota": "Il foglio informativo del conto corrente Revolut non prevede interessi sul saldo. I tassi di Revolut sono del Conto deposito senza vincoli, un sottoconto separato (versamenti e prelievi immediati, nessun vincolo di durata) da cui non risulta che si possa pagare con la carta: per questo non sono conteggiati. Qui vale 0.", "fonte": "https://www.revolut.com/it-IT/legal/italy-information-sheet/", "data_doc": "2026-10-15", "deposito_senza_vincoli": {"fasce": [{"fino_a": 3000, "lordo_pct": 2.5}, {"fino_a": null, "lordo_pct": 1.0}], "nota": "Non usato nei calcoli: sottoconto di risparmio, non conto per le spese.", "fonte": "https://www.revolut.com/it-IT/legal/pre-contractual-information-instant-access-savings-account/", "data_doc": "2026-10-15"}}, "cashback": {"pct": 0, "tipo": null, "max_mese_eur": null, "nota": "Il cashback che Revolut pubblicizza è del conto Pro per professionisti. Per i conti personali non risulta nei documenti: contato a 0.", "fonte": "https://www.revolut.com/it-IT/legal/italy-information-sheet/", "data_doc": "2026-10-15"}, "etf": {"ordine_pct": 0.25, "ordine_min": 1, "ordine_fisso": 0, "gratis_mese": 0, "custodia_anno": 0, "nota": "Ordini gratuiti al mese: 0 (dato più prudente: la pagina ETF di Revolut indica 1 con Standard e 3 con Plus, la pagina di assistenza 0 e 0). Oltre la soglia: il maggiore tra 0,25% dell'importo e 1 € (pagina ETF); la pagina di assistenza indica 1 € fisso. Nessuna custodia. I piani di investimento ricorrenti in ETF idonei non hanno commissioni.", "fonte": "https://revolut.com/it-IT/etfs", "fonte2": "https://help.revolut.com/it-IT/help/wealth/stocks/trading-stocks/trading-fees/what-fees-will-i-be-charged-for-my-trading/", "data_doc": null}}, "premium": {"nome": "Premium", "canone_mese": 9.99, "bonifico_online": 0, "bonifico_sportello": null, "atm_altra_banca": null, "atm_nota": "Gratis fino a €400 al mese o 5 prelievi", "ricarica_prepagata": null, "bollo_anno": null, "data_doc": null, "fonte": "https://www.revolut.com/it-IT/our-pricing-plans/", "interesse": {"fasce": [{"fino_a": null, "lordo_pct": 0}], "nota": "Il foglio informativo del conto corrente Revolut non prevede interessi sul saldo. I tassi di Revolut sono del Conto deposito senza vincoli, un sottoconto separato (versamenti e prelievi immediati, nessun vincolo di durata) da cui non risulta che si possa pagare con la carta: per questo non sono conteggiati. Qui vale 0.", "fonte": "https://www.revolut.com/it-IT/legal/italy-information-sheet/", "data_doc": "2026-10-15", "deposito_senza_vincoli": {"fasce": [{"fino_a": 6000, "lordo_pct": 2.5}, {"fino_a": null, "lordo_pct": 1.25}], "nota": "Non usato nei calcoli: sottoconto di risparmio, non conto per le spese.", "fonte": "https://www.revolut.com/it-IT/legal/pre-contractual-information-instant-access-savings-account/", "data_doc": "2026-10-15"}}, "cashback": {"pct": 0, "tipo": null, "max_mese_eur": null, "nota": "Il cashback che Revolut pubblicizza è del conto Pro per professionisti. Per i conti personali non risulta nei documenti: contato a 0.", "fonte": "https://www.revolut.com/it-IT/legal/italy-information-sheet/", "data_doc": "2026-10-15"}, "etf": {"ordine_pct": 0.25, "ordine_min": 1, "ordine_fisso": 0, "gratis_mese": 5, "custodia_anno": 0, "nota": "Ordini gratuiti al mese: 5 (dato più prudente: la pagina ETF di Revolut indica 1 con Standard e 3 con Plus, la pagina di assistenza 0 e 0). Oltre la soglia: il maggiore tra 0,25% dell'importo e 1 € (pagina ETF); la pagina di assistenza indica 1 € fisso. Nessuna custodia. I piani di investimento ricorrenti in ETF idonei non hanno commissioni.", "fonte": "https://revolut.com/it-IT/etfs", "fonte2": "https://help.revolut.com/it-IT/help/wealth/stocks/trading-stocks/trading-fees/what-fees-will-i-be-charged-for-my-trading/", "data_doc": null}}, "metal": {"nome": "Metal", "canone_mese": 15.99, "bonifico_online": 0, "bonifico_sportello": null, "atm_altra_banca": null, "atm_nota": "Gratis fino a €800 o 5 prelievi al mese", "ricarica_prepagata": null, "bollo_anno": null, "data_doc": null, "fonte": "https://www.revolut.com/it-IT/our-pricing-plans/", "interesse": {"fasce": [{"fino_a": null, "lordo_pct": 0}], "nota": "Il foglio informativo del conto corrente Revolut non prevede interessi sul saldo. I tassi di Revolut sono del Conto deposito senza vincoli, un sottoconto separato (versamenti e prelievi immediati, nessun vincolo di durata) da cui non risulta che si possa pagare con la carta: per questo non sono conteggiati. Qui vale 0.", "fonte": "https://www.revolut.com/it-IT/legal/italy-information-sheet/", "data_doc": "2026-10-15", "deposito_senza_vincoli": {"fasce": [{"fino_a": null, "lordo_pct": 2.5}], "nota": "Non usato nei calcoli: sottoconto di risparmio, non conto per le spese.", "fonte": "https://www.revolut.com/it-IT/legal/pre-contractual-information-instant-access-savings-account/", "data_doc": "2026-10-15"}}, "cashback": {"pct": 0, "tipo": null, "max_mese_eur": null, "nota": "Il cashback che Revolut pubblicizza è del conto Pro per professionisti. Per i conti personali non risulta nei documenti: contato a 0.", "fonte": "https://www.revolut.com/it-IT/legal/italy-information-sheet/", "data_doc": "2026-10-15"}, "etf": {"ordine_pct": 0.25, "ordine_min": 1, "ordine_fisso": 0, "gratis_mese": 10, "custodia_anno": 0, "nota": "Ordini gratuiti al mese: 10 (dato più prudente: la pagina ETF di Revolut indica 1 con Standard e 3 con Plus, la pagina di assistenza 0 e 0). Oltre la soglia: il maggiore tra 0,25% dell'importo e 1 € (pagina ETF); la pagina di assistenza indica 1 € fisso. Nessuna custodia. I piani di investimento ricorrenti in ETF idonei non hanno commissioni.", "fonte": "https://revolut.com/it-IT/etfs", "fonte2": "https://help.revolut.com/it-IT/help/wealth/stocks/trading-stocks/trading-fees/what-fees-will-i-be-charged-for-my-trading/", "data_doc": null}}, "ultra": {"nome": "Ultra", "canone_mese": 55, "bonifico_online": 0, "bonifico_sportello": null, "atm_altra_banca": null, "atm_nota": "Gratis fino a €2.000 al mese", "ricarica_prepagata": null, "bollo_anno": null, "data_doc": null, "fonte": "https://www.revolut.com/it-IT/our-pricing-plans/", "interesse": {"fasce": [{"fino_a": null, "lordo_pct": 0}], "nota": "Il foglio informativo del conto corrente Revolut non prevede interessi sul saldo. I tassi di Revolut sono del Conto deposito senza vincoli, un sottoconto separato (versamenti e prelievi immediati, nessun vincolo di durata) da cui non risulta che si possa pagare con la carta: per questo non sono conteggiati. Qui vale 0.", "fonte": "https://www.revolut.com/it-IT/legal/italy-information-sheet/", "data_doc": "2026-10-15", "deposito_senza_vincoli": {"fasce": [{"fino_a": 100000, "lordo_pct": 2.75}, {"fino_a": null, "lordo_pct": 2.5}], "nota": "Non usato nei calcoli: sottoconto di risparmio, non conto per le spese.", "fonte": "https://www.revolut.com/it-IT/legal/pre-contractual-information-instant-access-savings-account/", "data_doc": "2026-10-15"}}, "cashback": {"pct": 0, "tipo": null, "max_mese_eur": null, "nota": "Il cashback che Revolut pubblicizza è del conto Pro per professionisti. Per i conti personali non risulta nei documenti: contato a 0.", "fonte": "https://www.revolut.com/it-IT/legal/italy-information-sheet/", "data_doc": "2026-10-15"}, "etf": {"ordine_pct": 0.12, "ordine_min": 1, "ordine_fisso": 0, "gratis_mese": 10, "custodia_anno": 0, "nota": "Ordini gratuiti al mese: 10 (dato più prudente: la pagina ETF di Revolut indica 1 con Standard e 3 con Plus, la pagina di assistenza 0 e 0). Oltre la soglia: il maggiore tra 0,12% dell'importo e 1 € (pagina ETF); la pagina di assistenza indica 1 € fisso. Nessuna custodia. I piani di investimento ricorrenti in ETF idonei non hanno commissioni.", "fonte": "https://revolut.com/it-IT/etfs", "fonte2": "https://help.revolut.com/it-IT/help/wealth/stocks/trading-stocks/trading-fees/what-fees-will-i-be-charged-for-my-trading/", "data_doc": null}}}, "sostituto_imposta": {"plusvalenze": false, "interessi": null, "nota": "", "fonte": null}, "investimenti_tipo": "passivo"}, "tr": {"nome": "Trade Republic", "piano_default": "conto", "piani": {"conto": {"nome": "Conto Trade Republic", "canone_mese": 0, "bonifico_online": 0, "bonifico_sportello": null, "atm_altra_banca": null, "atm_nota": "Gratis da €100 in su, €1 sotto €100 (dipende dall'importo prelevato)", "ricarica_prepagata": null, "ordine_costo": 1, "ordine_nota": "Nessuna commissione di negoziazione, più €1 di costi di regolamento esterno per ogni ordine", "bollo_anno": null, "data_doc": "2025-01-01", "fonte": "https://assets.traderepublic.com/assets/files/FeeInformation_PaymentAccount_it.pdf", "fonte2": "https://support.traderepublic.com/it-it/784-Are-there-commissions-for-order-execution", "interesse": {"fasce": [{"fino_a": 50000, "lordo_pct": 3}, {"fino_a": null, "lordo_pct": 0}], "nota": "La pagina ufficiale indica il 3% annuo fino a 50.000 € «per i nuovi clienti»; per chi è già cliente e per la durata non dà indicazioni. Oltre 50.000 € non indica un tasso: contato a 0.", "fonte": "https://traderepublic.com/it-it/interesse", "data_doc": null}, "cashback": {"pct": 1, "tipo": "saveback", "max_mese_eur": 15, "nota": "Saveback 1% sui pagamenti con carta idonei, investito nel piano di accumulo. Massimo 15 € al mese (1.500 € di spesa). Richiede un piano di accumulo da almeno 50 € al mese.", "fonte": "https://support.traderepublic.com/it-it/1215-Was-ist-Saveback-", "data_doc": null}, "etf": {"ordine_pct": 0, "ordine_min": 0, "ordine_fisso": 1, "gratis_mese": 0, "custodia_anno": 0, "nota": "Nessuna commissione di negoziazione, più 1 € di costi di regolamento esterno per ogni ordine.", "fonte": "https://support.traderepublic.com/it-it/784-Are-there-commissions-for-order-execution", "data_doc": null}}}, "sostituto_imposta": {"plusvalenze": true, "interessi": true, "nota": "", "fonte": null}, "investimenti_tipo": "passivo"}}}
+initPlanSel()
+const TAX_INT=26   // ritenuta sugli interessi
+
+// interessi lordi su un saldo, per fasce: [{fino_a, lordo_pct}] (fino_a null = senza limite)
+function tierInt(fasce,bal){
+  if(!fasce||!(bal>0))return 0
+  let prev=0,tot=0
+  for(const f of fasce){
+    const top=f.fino_a==null?Infinity:f.fino_a
+    tot+=Math.max(0,Math.min(bal,top)-prev)*f.lordo_pct/100
+    prev=top
+    if(bal<=top)break
+  }
+  return tot
+}
+function planOf(b){const bk=TARIFFE.banche[b];return bk?bk.piani[planSel[b]]:null}
+function allCands(){
+  const c=[]
+  Object.keys(TARIFFE.banche).forEach(b=>{const bk=TARIFFE.banche[b];Object.keys(bk.piani).forEach(k=>c.push({b,k,bk,p:bk.piani[k]}))})
+  return c
+}
+function candLabel(c){return c.bk.nome+' · '+c.p.nome}
+function bankName(b){return (TARIFFE.banche[b]&&TARIFFE.banche[b].nome)||(typeof bn==='function'?bn(b):b)}
+function loadedBanks(){return Object.keys(TARIFFE.banche).filter(b=>allTx.some(t=>t.source===b))}
+
+// ── saldo giorno per giorno (ricostruito dal saldo inserito, andando indietro) ──
+function balSeries(b,from,to){
+  if(!(wealthCash[b]>=0)||wealthCash[b]==null)return null
+  const tx=allTx.filter(t=>t.source===b&&t.date instanceof Date).sort((x,y)=>x.date-y.date)
+  if(!tx.length)return null
+  const key=dt=>Math.floor(dt/864e5),byDay={}
+  tx.forEach(t=>{byDay[key(t.date)]=(byDay[key(t.date)]||0)+t.amount})
+  const last=key(tx[tx.length-1].date),first=key(tx[0].date)
+  const f0=Math.max(first,key(from)),t0=Math.max(f0,Math.min(last,key(to)))
+  let bal=wealthCash[b];const out=[]
+  for(let k=last;k>=f0;k--){if(k<=t0)out.push(bal);bal-=(byDay[k]||0)}
+  return out.length?out:null
+}
+// conto deposito senza vincoli (sottoconto di risparmio): alternativa, scelta solo se rende più dei conti correnti
+function depCands(ccs){
+  const out=[],seen=new Set()
+  allCands().forEach(c=>{
+    const d=c.p.interesse&&c.p.interesse.deposito_senza_vincoli;if(!d)return
+    const key=c.b+'|'+JSON.stringify(d.fasce);if(seen.has(key))return;seen.add(key)
+    out.push({b:c.b,k:c.k,bk:c.bk,dep:true,p:{nome:c.p.nome+', conto deposito senza vincoli',interesse:{fasce:d.fasce,nota:d.nota||'',fonte:d.fonte}}})
+  })
+  return out
+}
+function simInt(fasce,series){return series.reduce((q,bal)=>q+tierInt(fasce,bal)/365,0)}
+
+// ── interessi: ogni banca col proprio piano contro il candidato migliore per quel saldo ──
+function oppLiq(d){
+  const{periodFrom,periodTo}=d
+  const ccs=allCands().filter(c=>c.p.interesse)
+  const cands=ccs.concat(depCands(ccs))
+  const la=liqAnalysis(d)
+  const rows=[]
+  loadedBanks().forEach(b=>{
+    const ser=balSeries(b,periodFrom,periodTo)
+    const pl=planOf(b)
+    if(!ser||!pl||!pl.interesse)return
+    const avg=ser.reduce((q,x)=>q+x,0)/ser.length
+    const actual=simInt(pl.interesse.fasce,ser)*(1-TAX_INT/100)
+    let best=null,bestCC=null
+    cands.forEach(c=>{const n=simInt(c.p.interesse.fasce,ser)*(1-TAX_INT/100);if(!best||n>best.n+1e-9)best={c,n};if(!c.dep&&(!bestCC||n>bestCC.n+1e-9))bestCC={c,n}})
+    const e=la&&la.earned.find(x=>x.b===b)
+    rows.push({b,pl,planKey:planSel[b],days:ser.length,avg,actual,best,bestCC,missed:Math.max(0,best.n-actual),real:e?e.net:null})
+  })
+  if(!rows.length)return null
+  return{rows,total:rows.reduce((q,r)=>q+r.missed,0),la}
+}
+
+// ── cashback/saveback: spesa con carta per banca e per mese ──
+const _EXCL2=/sepa|direct debit|quota carte|satispay|superflash|trasferimento denaro|bancomat pay|prelievo|prelievi|ricarica carta|ricarica internet|scommess|lotterie|sisal|pokerstars|snai|lottomatica|f24|\bmav\b|\brav\b|affitto/i
+const _BANKOP2=/bonific|addebito|bolletta|utenz|domicili/i
+const _UTIL2=/\beni\b|\benel\b|\biren\b|\bhera\b|\ba2a\b|edison|\bacea\b|sorgenia|e\.on|engie|plenitude|\bsmat\b|acquedott|\btim\b|vodafone|windtre|wind tre|fastweb|iliad|\bgas\b|\bluce\b|energia/i
+function isCardPay(t){
+  if(t.source==='tr')return /^CARD_TRANSACTION/.test(t.op||'')
+  if(t.source==='revolut')return /pagamento con carta|card payment/.test(nrm(t.op||''))
+  const x=(t.op||'')+' '+(t.cat||'')+' '+(t.detail||'')
+  return !_EXCL2.test(x)&&(!_BANKOP2.test(x)||_UTIL2.test(x))
+}
+function cashSim(cb,monthly){
+  if(!cb||!(cb.pct>0))return 0
+  return Object.values(monthly).reduce((q,v)=>q+Math.min(v*cb.pct/100,cb.max_mese_eur==null?Infinity:cb.max_mese_eur),0)
+}
+function oppCash(d){
+  const cands=allCands().filter(c=>c.p.cashback)
+  const rows=[]
+  loadedBanks().forEach(b=>{
+    const pl=planOf(b);if(!pl||!pl.cashback)return
+    const monthly={};let spend=0
+    d.live.filter(t=>t.source===b&&t.amount<0&&t.catType==='expense'&&!t.isCommission&&t.catLabel!=='Gioco'&&isCardPay(t)).forEach(t=>{
+      const ym=t.date.getFullYear()+'-'+t.date.getMonth();monthly[ym]=(monthly[ym]||0)+Math.abs(t.amount);spend+=Math.abs(t.amount)})
+    if(spend<=0)return
+    const actual=cashSim(pl.cashback,monthly)
+    let best=null
+    cands.forEach(c=>{const n=cashSim(c.p.cashback,monthly);if(!best||n>best.n+1e-9)best={c,n}})
+    rows.push({b,pl,planKey:planSel[b],spend,actual,best,missed:Math.max(0,best.n-actual)})
+  })
+  if(!rows.length)return null
+  return{rows,total:rows.reduce((q,r)=>q+r.missed,0)}
+}
+const _tipoCb=c=>c&&c.tipo==='saveback'?'saveback':'cashback'
+const _fasceTxt=f=>f.map((x,i)=>{const prev=i?f[i-1].fino_a:0;const t=String(x.lordo_pct).replace('.',',')+'%';return x.fino_a==null?(i?`${t} oltre ${fmt(prev)}`:`${t}`):(i?`${t} da ${fmt(prev)} a ${fmt(x.fino_a)}`:`${t} fino a ${fmt(x.fino_a)}`)}).join(', ')
+
+function oppCashItem(d){
+  const o=oppCash(d);if(!o||o.total<0.005)return null
+  const r=o.rows.slice().sort((a,b)=>b.missed-a.missed)[0],bc=r.best.c.p.cashback
+  const cap=bc.max_mese_eur!=null?`, massimo ${fmt(bc.max_mese_eur)} al mese`:''
+  const altre=o.rows.filter(x=>x!==r&&x.missed>0.005).length
+  return{k:'sb',title:'Cashback/saveback non ottenuto',amt:o.total,more:moreHTML('sb'),
+    d:`Hai speso con carta <b>${fmt(o.rows.reduce((q,x)=>q+x.spend,0))}</b> nel periodo. La differenza maggiore è su <b>${esc(bankName(r.b))}</b> (${esc(r.pl.nome)}, ${r.pl.cashback.pct?String(r.pl.cashback.pct).replace('.',',')+'%':'nessun cashback/saveback'}): con <b>${esc(candLabel(r.best.c))}</b> (${String(bc.pct).replace('.',',')}% di ${_tipoCb(bc)}${cap}) avresti avuto <b>${fmt(r.best.n,0)}</b> invece di <b>${fmt(r.actual,0)}</b>${altre?`; ${altre===1?'un\'altra banca':altre+' altre banche'} lascia${altre===1?'':'no'} qualcosa`:''}. Dettaglio e condizioni in <a href="#liq-cmp">banca per banca</a>.`}
+}
+function oppLiqItem(d){
+  const o=oppLiq(d);if(!o||o.total<0.5)return null
+  const r=o.rows.slice().sort((a,b)=>b.missed-a.missed)[0]
+  const altre=o.rows.filter(x=>x!==r&&x.missed>0.5).length
+  return{k:'liq',title:'Interessi non percepiti',amt:o.total,more:moreHTML('liq'),
+    d:`Su <b>${esc(bankName(r.b))}</b> hai in media <b>${fmt(r.avg)}</b> e il piano ${esc(r.pl.nome)} rende ${esc(_fasceTxt(r.pl.interesse.fasce))} lordo. Con <b>${esc(candLabel(r.best.c))}</b> (${esc(_fasceTxt(r.best.c.p.interesse.fasce))}) nello stesso periodo avresti guadagnato <b>${fmt(r.best.n,0)}</b> netti invece di <b>${fmt(r.actual,0)}</b>${r.best.c.dep?' (spostando i soldi sul conto deposito, senza vincoli: per pagare vanno però riportati sul conto)':''}${altre?`; ${altre===1?'un\'altra banca lascia':altre+' altre banche lasciano'} qualcosa`:''}. Dettaglio in <a href="#liq-cmp">banca per banca</a>.`}
+}
+
+
+// ── investimenti: costi su tutte le banche contro la combinazione più economica ──
+function invTipo(b){const bk=TARIFFE.banche[b];return (bk&&bk.investimenti_tipo)||'passivo'}
+function invBuys(d,b){return d.live.filter(t=>t.source===b&&t.amount<0&&t.catType==='investment'&&!t.isInternal&&t.date instanceof Date).sort((x,y)=>x.date-y.date)}
+function oppInv(d){
+  const{periodTo}=d,terA=getParam('terFondi'),terP=getParam('terETF'),rows=[]
+  loadedBanks().forEach(b=>{
+    const P=invBuys(d,b);if(!P.length)return
+    const type=invTipo(b),tot=P.reduce((q,t)=>q+Math.abs(t.amount),0)
+    const cost=ter=>P.reduce((q,t)=>q+Math.abs(t.amount)*ter/100*Math.max(0,(periodTo-t.date)/864e5)/365.25,0)
+    const actual=cost(type==='attivo'?terA:terP),best=cost(terP)
+    rows.push({b,type,tot,n:P.length,actual,best,missed:Math.max(0,actual-best)})
+  })
+  if(!rows.length)return null
+  return{rows,total:rows.reduce((q,r)=>q+r.missed,0),terA,terP}
+}
+function oppInvItem(d){
+  const o=oppInv(d);if(!o||o.total<0.5)return null
+  const r=o.rows.slice().sort((a,b)=>b.missed-a.missed)[0],pc=n=>String(n).replace('.',',')
+  const altre=o.rows.filter(x=>x!==r&&x.missed>0.5).length
+  return{k:'gest',title:'Commissioni di gestione degli investimenti',amt:o.total,more:moreHTML('gest'),
+    d:`Su <b>${esc(bankName(r.b))}</b> hai investito <b>${fmt(r.tot)}</b> in ${r.n} ${plu(r.n,'acquisto','acquisti')}, che consideriamo fondi a gestione attiva (costi di gestione ricorrenti di circa ${pc(o.terA)}% l'anno). Un ETF passivo costerebbe circa ${pc(o.terP)}%. Contando ogni versamento dal giorno dell'acquisto fino all'ultimo movimento caricato, la differenza nel periodo è di <b>${fmt(r.missed,0)}</b>${altre?`; ${altre===1?'un\'altra banca lascia':altre+' altre banche lasciano'} qualcosa`:''}. Dettaglio in <a href="#liq-cmp">banca per banca</a>.`}
+}
+function etfCompareTxt(){
+  const e=b=>{const p=TARIFFE.banche[b]&&Object.values(TARIFFE.banche[b].piani).find(x=>x.etf);return p&&p.etf}
+  const i=e('intesa'),u=e('unicredit'),t=e('tr')
+  if(!i||!u||!t)return ''
+  const m=n=>fmt(n,2)
+  return `Anche le banche tradizionali permettono di comprare ETF e fondi passivi, ma per ora non li consideriamo. Un ordine di acquisto costa ${m(i.ordine_fisso)} con InvestoPro (gruppo Intesa Sanpaolo) e ${String(u.ordine_pct).replace('.',',')}% con minimo ${m(u.ordine_min)} su UniCredit, più ${fmt(u.custodia_anno)} l'anno di custodia del deposito titoli (la voce «altri strumenti finanziari italiani»), contro ${m(t.ordine_fisso)} su Trade Republic, senza custodia. Sono costi di negoziazione e di custodia che per ora non calcoliamo.`
+}
+function sostituto(b){const bk=TARIFFE.banche[b];return bk&&bk.sostituto_imposta}
+function sostitutoHTML(bs){
+  const rows=bs.map(b=>({b,s:sostituto(b)})).filter(x=>x.s)
+  if(!rows.length)return ''
+  return `<div class="sec-label" style="margin:1rem 0 .4rem">Chi fa da sostituto d'imposta</div>
+  <p class="q-note" style="margin:0 0 .5rem">Il sostituto d'imposta trattiene lui le tasse (26%) su interessi e plusvalenze e le versa allo Stato: ti arriva già il netto. Se non lo fa, devi dichiararle tu nella dichiarazione dei redditi.</p>
+  <ul class="q-note" style="padding-left:1.1rem;margin:0">${rows.map(x=>`<li><b>${esc(bankName(x.b))}</b>: ${x.s.plusvalenze?'sì, anche sulle plusvalenze degli investimenti':'<b>non sulle plusvalenze degli investimenti</b>: le dichiari tu'}${x.s.interessi?'; sì sugli interessi':''}. ${x.s.nota?`<span class="oc" style="max-width:none;text-align:left">${esc(x.s.nota)}</span>`:''}${x.s.fonte?` <a href="${x.s.fonte}" target="_blank" rel="noopener noreferrer" referrerpolicy="no-referrer">fonte</a>`:''}</li>`).join('')}</ul>`
+}
+
+// ── scelta del piano: selettore comune (caricamento file, riepilogo, confronto) ──
+function planSelectHTML(b,cls){return ''}
+function setPlan(b,k){
+  planSel[b]=k
+  try{track('piano_cambiato',{banca:b})}catch(e){}
+  if(typeof _lastData!=='undefined'&&_lastData&&document.getElementById('results-sec').style.display!=='none'){
+    renderBills(_lastData);renderConfronto()
+  }
+  renderChips()
+}
+function renderPlanPanel(){const el=document.getElementById('plan-panel');if(el)el.innerHTML=''}
+
+// ── rilevamento della banca già al caricamento, per scegliere subito il piano ──
+const fileBank={}
+async function detectBanks(){
+  for(const f of pendingFiles){
+    if(fileBank[f.name]!==undefined)continue
+    fileBank[f.name]=null
+    try{const fm=detectFormat(await readFile(f));fileBank[f.name]=TARIFFE.banche[fm]?fm:null}catch(e){fileBank[f.name]=null}
+    renderChips()
+  }
+}
+function addFiles(files){files.forEach(f=>{if(!pendingFiles.find(p=>p.name===f.name))pendingFiles.push(f)});renderChips();track('file_caricato',{n:files.length});detectBanks()}
+function renderChips(){
+  const el=document.getElementById('files-added');if(!el)return
+  if(!pendingFiles.length){el.innerHTML='';return}
+  el.innerHTML=pendingFiles.map((f,i)=>{
+    const b=fileBank[f.name]
+    return `<div class="file-chip"><span>📄 ${esc(f.name)}</span>${b?`<span class="chip-plan">${esc(bankName(b))}</span>`:''}<button onclick="rmFile(${i})">✕</button></div>`}).join('')+
+    `<button class="analyze-btn" onclick="runAnalysis()">Analizza ${pendingFiles.length===1?'il file':pendingFiles.length+' file'} →</button>`
+}
+
+// ── dettaglio banca per banca ──
+function renderLiqCompare(d){
+  const el=document.getElementById('liq-cmp');if(!el)return
+  renderPlanPanel()
+  const {periodFrom,periodTo}=d,per=fmtDate(periodFrom)+' – '+fmtDate(periodTo)
+  const c=oppCash(d),l=oppLiq(d),la=l?l.la:liqAnalysis(d)
+  let h=`<h3>Interessi e cashback/saveback, banca per banca</h3>
+  <p class="q-lead" style="margin-bottom:.8rem">Simulazione sui tuoi movimenti, dal <b>${fmtDate(periodFrom)}</b> al <b>${fmtDate(periodTo)}</b>. Per ogni banca si confronta il piano che hai scelto con il migliore tra tutti quelli del nostro elenco, calcolato proprio sui tuoi saldi e sulla tua spesa. Nessuna proiezione sul resto dell'anno.</p>`
+  // cashback
+  h+=`<div class="sec-label" style="margin:.8rem 0 .4rem">Cashback/saveback sulla spesa con carta</div>`
+  if(c){
+    h+=`<div class="q-table-wrap"><table class="q-table"><thead><tr><th>Banca</th><th>Spesa con carta</th><th>Quello che ricevi</th><th>Piano migliore per te</th><th>Con il migliore</th><th>Non ottenuto</th></tr></thead><tbody>${
+      c.rows.map(r=>`<tr><td><b>${esc(bankName(r.b))}</b><br>${planSelectHTML(r.b)}</td><td>${fmt(r.spend)}</td><td>${fmt(r.actual,2)}<br><small>${r.pl.cashback.pct?String(r.pl.cashback.pct).replace('.',',')+'% '+_tipoCb(r.pl.cashback):'nessuno'}</small></td><td>${esc(candLabel(r.best.c))}<br><small>${String(r.best.c.p.cashback.pct).replace('.',',')}% ${_tipoCb(r.best.c.p.cashback)}${r.best.c.p.cashback.max_mese_eur!=null?', max '+fmt(r.best.c.p.cashback.max_mese_eur)+'/mese':''}</small></td><td>${fmt(r.best.n,2)}</td><td><b>${fmt(r.missed,2)}</b></td></tr>`).join('')}
+      <tr><td colspan="5"><b>Totale nel periodo</b></td><td><b>${fmt(c.total,2)}</b></td></tr></tbody></table></div>`
+  }else h+=`<p class="q-note">Nessuna spesa con carta riconosciuta nei movimenti caricati.</p>`
+  // interessi
+  h+=`<div class="sec-label" style="margin:1rem 0 .4rem">Interessi sui soldi che tieni sul conto (netti)</div>`
+  if(l){
+    h+=`<div class="q-table-wrap"><table class="q-table"><thead><tr><th>Banca</th><th>Saldo medio</th><th>Interessi del tuo piano</th><th>Piano migliore per te</th><th>Con il migliore</th><th>Non percepiti</th></tr></thead><tbody>${
+      l.rows.map(r=>`<tr><td><b>${esc(bankName(r.b))}</b><br>${planSelectHTML(r.b)}</td><td>${fmt(r.avg)}</td><td>${fmt(r.actual,2)}<br><small class="oc">${esc(_fasceTxt(r.pl.interesse.fasce))} lordo</small>${r.real!=null?`<br><small class="oc">nei movimenti risultano ${fmt(r.real,2)}</small>`:''}</td><td>${esc(candLabel(r.best.c))}<br><small class="oc">${esc(_fasceTxt(r.best.c.p.interesse.fasce))} lordo</small>${r.best.c.dep?`<br><small class="oc">conto deposito: i soldi sono liberi ma per spenderli vanno riportati sul conto. Sul solo conto corrente: ${esc(candLabel(r.bestCC.c))}, ${fmt(r.bestCC.n,2)}</small>`:''}</td><td>${fmt(r.best.n,2)}</td><td><b>${fmt(r.missed,2)}</b></td></tr>`).join('')}
+      <tr><td colspan="5"><b>Totale nel periodo</b></td><td><b>${fmt(l.total,2)}</b></td></tr></tbody></table></div>`
+  }else h+=`<p class="q-note">Per calcolare gli interessi inserisci il saldo di oggi dei tuoi conti nella sezione Patrimonio: serve per ricostruire quanto hai tenuto sul conto giorno per giorno.</p>`
+  // investimenti
+  const iv=oppInv(d)
+  if(iv){
+    const pc=n=>String(n).replace('.',',')
+    h+=`<div class="sec-label" style="margin:1rem 0 .4rem">Commissioni di gestione degli investimenti</div>
+    <div class="q-table-wrap"><table class="q-table"><thead><tr><th>Banca</th><th>Investito</th><th>Tipo considerato</th><th>Costi di gestione (nel periodo)</th><th>Con un ETF passivo</th><th>In più</th></tr></thead><tbody>${
+      iv.rows.map(r=>`<tr><td><b>${esc(bankName(r.b))}</b></td><td>${fmt(r.tot)}<br><small class="oc">${r.n} ${plu(r.n,'acquisto','acquisti')}</small></td><td>${r.type==='attivo'?'Fondi attivi':'ETF passivi'}<br><small class="oc">${pc(r.type==='attivo'?iv.terA:iv.terP)}% l'anno</small></td><td>${fmt(r.actual,2)}</td><td>${fmt(r.best,2)}<br><small class="oc">${pc(iv.terP)}% l'anno</small></td><td><b>${fmt(r.missed,2)}</b></td></tr>`).join('')}
+      <tr><td colspan="5"><b>Totale nel periodo</b></td><td><b>${fmt(iv.total,2)}</b></td></tr></tbody></table></div>
+    <p class="q-note">Intesa Sanpaolo e UniCredit sono considerate come fondi a gestione attiva (circa ${pc(iv.terA)}% l'anno). Trade Republic è considerata come ETF passivi (circa ${pc(iv.terP)}%) e fa da riferimento per il confronto. Revolut offre ETF, ma non fa da sostituto d'imposta sugli investimenti: se hai investito lì lo mostriamo, ma non lo usiamo come alternativa. Le percentuali sono i costi annui medi riportati dalla Banca d'Italia (dati ESMA) e si possono cambiare nei parametri; sono applicate a ogni versamento dal giorno dell'acquisto all'ultimo movimento caricato. ${etfCompareTxt()}</</p>`
+  }
+  if(iv&&iv.rows.some(r=>r.b==='revolut'))h+=`<div class="alert a"><b>Revolut non fa da sostituto d'imposta.</b> Hai investito su Revolut: le plusvalenze e le imposte sugli investimenti vanno dichiarate da te nella dichiarazione dei redditi. Questo costo non è incluso nei calcoli.</div>`
+  h+=sostitutoHTML(loadedBanks())
+  if(la&&la.missing&&la.missing.length)h+=`<div class="alert a">Hai caricato anche i movimenti di ${esc(listIt(la.missing.map(bankName)))}, ma non ne hai inserito il saldo nella sezione Patrimonio: quella banca non pesa nel calcolo degli interessi.</div>`
+  // note e fonti dei piani coinvolti
+  const used=new Map()
+  ;[c&&c.rows,l&&l.rows].forEach(rs=>(rs||[]).forEach(r=>{[{b:r.b,k:r.planKey,p:r.pl,bk:TARIFFE.banche[r.b]},r.best.c].forEach(x=>used.set(x.b+'|'+x.k+(x.dep?'|dep':''),x))}))
+  h+=`<ul class="q-note" style="margin-top:.8rem;padding-left:1.1rem">${[...used.values()].map(x=>{
+    const note=[x.p.interesse&&x.p.interesse.nota,x.p.cashback&&x.p.cashback.nota].filter(Boolean)
+    const src=[x.p.interesse&&x.p.interesse.fonte,x.p.cashback&&x.p.cashback.fonte].filter((v,i,a)=>v&&a.indexOf(v)===i)
+    return `<li><b>${esc(candLabel(x))}</b>: ${esc(note.join(' '))} ${src.map((u,i)=>`<a href="${u}" target="_blank" rel="noopener noreferrer" referrerpolicy="no-referrer">fonte${src.length>1?' '+(i+1):''}</a>`).join(' · ')}</li>`}).join('')}</ul>
+  <p class="q-note">Interessi: tassi lordi annui per fasce di saldo, applicati ogni giorno al saldo ricostruito dai tuoi movimenti, meno la ritenuta del ${TAX_INT}%. Cashback/saveback: percentuale sulla spesa con carta di ogni mese, con l'eventuale massimale mensile. Non sono considerati canoni, condizioni di attivazione e promozioni a tempo. I tassi cambiano: verifica sempre sul sito della banca. Elenco aggiornato al ${TARIFFE.versione.split('-').reverse().join('/')}.</p>`
+  el.innerHTML=h
+}
+
 // ─── PIPELINE ─────────────────────────────────────
 const MSGS=['Leggendo le transazioni…','Rilevando il formato bancario…','Identificando trasferimenti interni…','Calcolando commissioni e risparmio…','Quasi pronto…']
 async function runAnalysis(){
@@ -3277,7 +3847,7 @@ async function runAnalysis(){
     renderResults(analyze(deduped))
   }catch(e){track('errore_parsing',{formato:'eccezione'});clearInterval(timer);alert('Errore: '+e.message);show('upload-sec')}
 }
-function resetTool(){_demoMode=false;pendingFiles=[];allTx=[];activeMonthFilter=null;filterMonths=0;customFrom=null;customTo=null;activeBankFilter=null;document.getElementById('files-added').innerHTML='';show('upload-sec')}
+function resetTool(){_demoMode=false;txResetView();pendingFiles=[];allTx=[];activeMonthFilter=null;filterMonths=0;customFrom=null;customTo=null;activeBankFilter=null;document.getElementById('files-added').innerHTML='';show('upload-sec')}
 function show(id){
   ['upload-sec','loading-sec','results-sec'].forEach(s=>{
     document.getElementById(s).style.display=s===id?(s==='results-sec'?'block':'flex'):'none'
