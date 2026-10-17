@@ -606,6 +606,18 @@ details.q-det>div{padding:0 1.2rem 1.1rem}
 .q-blkcard .card{box-shadow:none;border:0;padding:0;margin:.8rem 0}
 @media (prefers-reduced-motion:reduce){.q-blk>summary>span::before{transition:none}}
 
+.q-line-pc{min-width:2.6rem;text-align:right;font-size:12.5px;color:var(--ink-sec);font-variant-numeric:tabular-nums;margin-left:.5rem}
+
+.q-pac-tg{display:flex;gap:.6rem;align-items:flex-start;margin-top:.7rem;font-size:14px;font-weight:600;color:var(--ink);cursor:pointer;max-width:70ch}
+.q-pac-tg input{width:20px;height:20px;margin-top:2px;accent-color:var(--teal);flex:none}
+.q-pac-tg small{display:block;font-weight:400;font-size:12.5px;color:var(--ink-sec);margin-top:.15rem}
+
+.q-famlist{list-style:none;margin:0;padding:0}.q-famlist li{display:grid;grid-template-columns:1fr auto auto;gap:.8rem;align-items:center;padding:.45rem 0;border-top:1px solid var(--border);font-size:14px}
+.q-famlist li b{font-variant-numeric:tabular-nums}.q-famlist .q-btn{padding:.25rem .7rem;font-size:13px}
+
+.q-mixmodes{margin-bottom:.8rem;max-width:620px}
+.q-mixmodes .q-mode{padding:.7rem .8rem}
+
 .q-table-wrap.tall{max-height:700px;overflow:auto}
 .q-table-wrap.tall thead th{position:sticky;top:0;z-index:2}
 .q-table-wrap.tall thead th:first-child{left:0;z-index:3}
@@ -925,21 +937,24 @@ details.q-det>div{padding:0 1.2rem 1.1rem}
         </div>
 
         <div class="q-st"><span>3</span> In cosa vuoi investire?</div>
+        <div class="q-modes q-mixmodes">
+          <button type="button" class="q-mode" data-x="eq" onclick="setMixMode('eq')"><b>Solo azioni</b><small>Tutto in azioni: più rendimento, più oscillazioni.</small></button>
+          <button type="button" class="q-mode" data-x="bond" onclick="setMixMode('bond')"><b>Solo obbligazioni</b><small>Tutto in obbligazioni: meno rendimento, meno oscillazioni.</small></button>
+          <button type="button" class="q-mode on" data-x="custom" onclick="setMixMode('custom')"><b>Scegli tu la %</b><small>Decidi quanto in azioni e quanto in obbligazioni.</small></button>
+        </div>
         <div class="q-mix" style="--p:60%">
+          <div id="mix-custom">
           <div class="q-mix-top">
             <div class="q-mix-a"><b id="mix-a">60%</b><span>azioni</span></div>
             <div class="q-mix-r"><span>obbligazioni</span><b id="mix-b">40%</b></div>
           </div>
           <input type="range" id="sim-eq" class="q-mix-range" min="0" max="100" step="5" value="60" oninput="onSimEq()" aria-label="Quota in azioni, il resto è in obbligazioni">
-          <div class="q-mix-ends">
-            <button type="button" class="q-mix-end" data-e="100" onclick="setSimEq(100)">Solo azioni</button>
-            <button type="button" class="q-mix-end" data-e="0" onclick="setSimEq(0)">Solo obbligazioni</button>
           </div>
           <div class="q-mix-out"><span>Rendimento ipotizzato</span>
             <label><input type="number" step="0.5" id="sim-return" value="6.3" oninput="renderSimulation()"> % l'anno</label>
           </div>
         </div>
-        <p class="q-note">Il rendimento dipende dal prodotto che scegli, e non tutti i prodotti si possono comprare a rate: controlla cosa permette la tua banca. Obbligazioni e azioni qui sono fondi ed ETF: il dato è la media europea dal 2015 al 2024, al netto dei costi correnti (ESMA). Sposta la barra per scegliere quanta parte è in azioni (rendimento 9,3%) e quanta in obbligazioni (1,8%): il rendimento è la media pesata, calcolata da noi. Puoi anche scrivere direttamente il rendimento che preferisci.</p>
+        <p class="q-note">Il rendimento dipende dal prodotto che scegli, e non tutti i prodotti si possono comprare a rate: controlla cosa permette la tua banca. Obbligazioni e azioni qui sono fondi ed ETF: il dato è la media europea dal 2015 al 2024, al netto dei costi correnti (ESMA). Le azioni hanno reso in media il 9,3% l'anno, le obbligazioni l'1,8%. Con «Scegli tu la %» sposti la barra e il rendimento è la media pesata, calcolata da noi. Puoi anche scrivere direttamente il rendimento che preferisci.</p>
         <details class="q-more q-prod"><summary>Che rendimento hanno avuto i prodotti più usati?</summary><div>
           <table class="q-ptab"><thead><tr><th>Prodotto</th><th>Cosa aspettarsi</th></tr></thead><tbody>
             <tr><td>Conto di deposito</td><td>Il tasso lo conosci alla firma e non cambia fino alla scadenza. Per esempio, a ottobre 2026 un deposito a un anno di BBVA paga il 2,8% lordo.</td></tr>
@@ -980,6 +995,7 @@ details.q-det>div{padding:0 1.2rem 1.1rem}
       <div id="dedup-sec" style="display:none">
         <h3>Trasferimenti tra i tuoi conti, esclusi dai conti</h3>
         <p class="q-lead" style="margin-bottom:.9rem">Soldi spostati da un tuo conto a un altro: contarli come entrata e uscita falserebbe il risultato.</p>
+        <p class="q-lead" style="margin-bottom:.9rem">Un trasferimento tra i tuoi conti non è stato riconosciuto? Cerca il movimento nella tabella e scegli la categoria «🔄 Trasf. interno»: lo escludiamo dai conti.</p>
         <div class="card" id="dedup-table"></div>
       </div>
       <div class="q-end"><button class="q-btn" onclick="resetTool()">Carica altri file</button></div>
@@ -2260,9 +2276,7 @@ let activeBankFilter=null   // 'intesa' | 'tr' | 'revolut' | 'unicredit' | null
 let catFilter=new Set(),txSort={key:null,dir:'asc'}
 function txSetSort(k){
   if(txSort.key!==k)txSort={key:k,dir:(k==='date'||k==='amount')?'desc':'asc'}
-  else if(txSort.dir==='asc'&&(k==='date'||k==='amount')){txSort={key:null,dir:'asc'}}
-  else if(txSort.dir==='asc')txSort.dir='desc'
-  else txSort=(k==='date'||k==='amount')?{key:k,dir:'asc'}:{key:null,dir:'asc'}
+  else txSort.dir=txSort.dir==='asc'?'desc':'asc'
   renderTxTable(activeFilter)
 }
 function txToggleCat(l){catFilter.has(l)?catFilter.delete(l):catFilter.add(l);renderTxTable(activeFilter)}
@@ -2271,7 +2285,7 @@ function txResetView(){catFilter=new Set();txSort={key:null,dir:'asc'}}
 function txEnsureUI(rowsBeforeCat){
   // intestazioni cliccabili
   const keys=['date','desc','bank','cat','amount','note']
-  document.querySelectorAll('table.tx thead th').forEach((th,i)=>{
+  document.querySelectorAll('#tx-body')[0].closest('table').querySelectorAll('thead th').forEach((th,i)=>{
     const k=keys[i];if(!k)return
     if(!th.dataset.k){th.dataset.k=k;th.dataset.t=th.textContent;th.style.cursor='pointer';th.style.userSelect='none';th.title='Clicca per ordinare';th.onclick=()=>txSetSort(k)}
     const on=txSort.key===k
@@ -2469,7 +2483,7 @@ function renderOverview(d){
 
 // ─── COMMISSIONI: totale + voci che lo compongono ─
 function billHTML(o){
-  const max=Math.max(...o.items.map(i=>i.amt),1)
+  const tot=Math.max(o.items.reduce((q,i)=>q+i.amt,0),0.0001)
   return `<div class="q-bill${o.imp?' imp':''}">
     <div class="q-bill-total">
       <div class="q-bill-tag">${o.tag}</div>
@@ -2479,8 +2493,8 @@ function billHTML(o){
     </div>
     <div class="q-bill-items">
       ${o.items.length?`<ul>${o.items.map(i=>`<li class="q-line">
-        <div class="q-line-head"><span class="q-line-t">${i.count?`<span class="q-count">${i.count}</span>`:''}${i.title}</span><span class="q-leader"></span><span class="q-line-amt">${fmt(i.amt,2)}</span></div>
-        <div class="q-line-bar"><span style="width:${Math.max(3,i.amt/max*100).toFixed(1)}%"></span></div>
+        <div class="q-line-head"><span class="q-line-t">${i.count?`<span class="q-count">${i.count}</span>`:''}${i.title}</span><span class="q-leader"></span><span class="q-line-amt">${fmt(i.amt,2)}</span><span class="q-line-pc">${Math.round(i.amt/tot*100)}%</span></div>
+        <div class="q-line-bar"><span style="width:${Math.max(2,i.amt/tot*100).toFixed(1)}%"></span></div>
         <div class="q-line-d">${i.d}</div>${i.more||''}</li>`).join('')}</ul>
         <div class="q-bill-totline"><span>${o.totLabel}</span><span>${fmt(o.items.reduce((s,i)=>s+i.amt,0),2)}</span></div>`
       :`<div class="q-empty">${o.empty}</div>`}
@@ -2645,8 +2659,7 @@ function renderFlussi(){
   if(pt&&pt.getDate()<new Date(pt.getFullYear(),pt.getMonth()+1,0).getDate()&&!part[ymOf(pt)])part[ymOf(pt)]='il periodo scelto finisce il '+pt.getDate()
   const t=document.getElementById('fl-table'),st=document.getElementById('st-table')
   // media storica per la simulazione (tutti i dati, mesi completi)
-  const hist=monthRows(allTx.filter(x=>!x.isInternal)).filter(r=>!base[r.ym])
-  _histAvgSavings=hist.length?hist.reduce((s,r)=>s+r.par,0)/hist.length:0
+  histAvg()
   if(!rows.length){
     t.innerHTML='<tbody><tr><td>Nessun movimento nel periodo scelto</td></tr></tbody>'
     st.innerHTML='';document.getElementById('st-lead').textContent='';document.getElementById('st-note').textContent='';document.getElementById('fl-note').textContent=''
@@ -2779,14 +2792,14 @@ function renderResults(data){
   observeConfronto()
   renderCharts()   // chiama renderFlussi()
 
+  document.getElementById('dedup-sec').style.display='block'
   if(internalTx.length){
-    document.getElementById('dedup-sec').style.display='block'
     document.getElementById('dedup-table').innerHTML=internalTx.slice(0,15).map(t=>
       `<div class="row"><div><div class="rn">${esc(t.detail||t.op)}</div><div class="rs">${fmtDate(t.date)} · ${esc(bn(t.source))} · ${esc(t.internalNote||'Trasferimento interno')}</div></div>
        <div style="display:flex;align-items:center;gap:8px"><span class="badge bp">Escluso</span><button class="filter-btn" style="padding:.15rem .6rem;font-size:12px" onclick="unmarkInternal(${allTx.indexOf(t)})">Non è un mio spostamento</button>
        <span class="rv" style="color:var(--ink-ter)">${t.amount<0?'−':'+'}${fmt(t.amount)}</span></div></div>`).join('')+
       (internalTx.length>15?`<div class="q-note">+ altri ${internalTx.length-15} esclusi</div>`:'')
-  }else document.getElementById('dedup-sec').style.display='none'
+  }else document.getElementById('dedup-table').innerHTML='<div class="q-note">Nessun trasferimento tra i tuoi conti riconosciuto.</div>'
 
   const banks=[...new Set(txs.map(t=>t.source))].sort()
   document.getElementById('filter-bar').innerHTML=
@@ -2943,31 +2956,71 @@ function setSimMode(m){
 }
 const EQ_R=9.3,BOND_R=1.8
 function eqReturn(e){return Math.round((e/100*EQ_R+(1-e/100)*BOND_R)*100)/100}
+let _mixMode='custom',_customEq=60
+function setMixMode(m){
+  _mixMode=m
+  if(m==='custom')document.getElementById('sim-eq').value=_customEq
+  if(m==='eq')document.getElementById('sim-eq').value=100
+  else if(m==='bond')document.getElementById('sim-eq').value=0
+  onSimEq()
+}
 function setSimEq(e){document.getElementById('sim-eq').value=e;onSimEq()}
 function mixPaint(){
   const r=document.getElementById('sim-eq');if(!r)return
   const e=Math.max(0,Math.min(100,parseFloat(r.value)||0)),box=r.closest('.q-mix')
   box.style.setProperty('--p',e+'%')
   document.getElementById('mix-a').textContent=e+'%';document.getElementById('mix-b').textContent=(100-e)+'%'
-  document.querySelectorAll('.q-mix-end').forEach(b=>b.classList.toggle('on',parseFloat(b.dataset.e)===e))
+  document.querySelectorAll('.q-mixmodes .q-mode').forEach(b=>b.classList.toggle('on',b.dataset.x===_mixMode))
+  const mc=document.getElementById('mix-custom');if(mc)mc.style.display=_mixMode==='custom'?'':'none'
+  box.style.paddingTop=_mixMode==='custom'?'':'.8rem'
 }
 function onSimEq(){
   let e=parseFloat(document.getElementById('sim-eq').value);if(!isFinite(e))e=60;e=Math.max(0,Math.min(100,e))
+  if(_mixMode==='custom')_customEq=e
   document.getElementById('sim-return').value=eqReturn(e);mixPaint();renderSimulation()
 }
 function simChips(){mixPaint()}
+// ── risparmio medio: si possono escludere aiuti familiari e vincite da gioco (scelta nel PAC) ──
+window._exclExtra=true
+const EXTRA_LABELS=['Aiuto familiare']
+function isExtraIn(t){return t.catLabel==='Aiuto familiare'&&(t.catType==='income'||t.catType==='expense')}
+function histAvg(){
+  const base=partialSet(),tx=allTx.filter(x=>!x.isInternal),extra=tx.filter(isExtraIn)
+  const use=window._exclExtra?tx.filter(x=>!isExtraIn(x)):tx
+  const hist=monthRows(use).filter(r=>!base[r.ym])
+  _histAvgSavings=hist.length?hist.reduce((s,r)=>s+r.par,0)/hist.length:0
+  const hm=monthRows(tx).filter(r=>!base[r.ym]),okM=new Set(hm.map(r=>r.ym))
+  const sum=extra.filter(t=>okM.has(ymOf(t.date))).reduce((q,t)=>q+t.amount,0) // netto: entrate meno uscite
+  window._histExtra={n:extra.length,avg:hm.length?sum/hm.length:0}
+}
+const FAM_COMPANY=/\b(s\.?p\.?a\.?|s\.?r\.?l\.?|snc|sas|societ[aà]|soc\.|coop\w*|associazion\w*|banca|bank|assicura\w*|condomin\w*|comune di|agenzia|poste|ltd|gmbh|inc|llc|group|servizi|studio|paypal|satispay|revolut|trade republic|amazon|stipendio|affitto|locazione)\b/i
+function famCandidates(){
+  return allTx.map((t,i)=>({t,i})).filter(({t})=>!t.isInternal&&!isExtraIn(t)&&(t.catLabel==='Bonifico in uscita'||t.catLabel==='Bonifici ricevuti')&&Math.abs(t.amount)>=100&&!FAM_COMPANY.test((t.detail||'')+' '+(t.op||''))).sort((a,b)=>b.t.date-a.t.date)
+}
+function famWho(t){const x=String(t.detail||t.op||''),N="([A-Za-zÀ-ÿ'’]+(?:\\s+[A-Za-zÀ-ÿ'’]+){1,2})";const m=x.match(new RegExp('a favore di\\s+'+N,'i'))||x.match(new RegExp('\\bda\\s+(?!voi\\b)'+N,'i'));return m?m[1].replace(/\s+(data|identific\w*|NOTPROVIDED)$/i,''):(t.op||'bonifico')}
+function famSuggestHTML(){
+  const c=famCandidates();if(!c.length)return ''
+  const show=c.slice(0,10)
+  return `<details class="q-more q-fam"><summary>Possibili aiuti familiari: ${c.length} ${plu(c.length,'bonifico','bonifici')} a o da una persona</summary><div>
+    <p class="q-note" style="margin:.2rem 0 .5rem">Sono solo suggerimenti: bonifici da 100 € in su, in entrata o in uscita, da o verso una persona. Segna quelli che sono aiuti della tua famiglia: saranno esclusi dal risparmio medio. I bonifici che ti restituiscono dei soldi restano dentro: non segnarli.</p>
+    <ul class="q-famlist">${show.map(({t,i})=>`<li><span>${fmtDate(t.date)} · ${esc(famWho(t))}</span><b style="color:${t.amount>0?'var(--teal)':'var(--ink)'}">${fmtSigned(t.amount)}</b><button class="q-btn" type="button" onclick="markFamily(${i})">Segna</button></li>`).join('')}</ul>
+    ${c.length>show.length?`<p class="q-note">Ne vedi ${show.length} su ${c.length}: gli altri li trovi tra i movimenti, cambiando la categoria.</p>`:''}</div></details>`
+}
+function markFamily(i){pickApply(allTx[i],'Aiuto familiare','👪');recomputeKeepView()}
+function setExclExtra(on){window._exclExtra=!!on;histAvg();renderSimulation()}
 function pacCallout(){
   const el=document.getElementById('sim-margin');if(!el)return
   if(_simMode==='lump'){el.innerHTML='';return}
   const pac=parseFloat(document.getElementById('sim-pac').value)||0
   const avg=_histAvgSavings, m=avg-pac, up=m>=0
   const col=up?'var(--teal)':'var(--red)'
+  const X=window._histExtra||{n:0,avg:0},ex=window._exclExtra&&X.n>0,xt=ex?', senza gli aiuti familiari':''
   el.innerHTML=`<div class="q-pac ${up?'':'neg'}">
     <div class="q-pac-main"><div class="q-pac-k">${up?'Puoi aumentare il PAC di':'Il tuo PAC supera il risparmio di'}</div>
     <div class="q-pac-n" style="color:${col}">${up?'+':''}${fmt(Math.abs(m))}<span>/mese</span></div></div>
     <div class="q-pac-t">${up
-      ?`Ogni mese ti restano in media <b>${fmtSigned(avg)}</b> (entrate meno uscite). Con un PAC di <b>${fmt(pac)}</b> hai ancora <b>${fmt(m)}</b> liberi: puoi investirli in più senza ridurre la tua liquidità.`
-      :`Ogni mese ti restano in media <b>${fmtSigned(avg)}</b> (entrate meno uscite), meno dei <b>${fmt(pac)}</b> del PAC. Per non intaccare la liquidità scendi di almeno <b>${fmt(Math.abs(m))}</b> al mese.`}</div></div>`
+      ?`Ogni mese ti restano in media <b>${fmtSigned(avg)}</b> (entrate meno uscite${xt}). Con un PAC di <b>${fmt(pac)}</b> hai ancora <b>${fmt(m)}</b> liberi: puoi investirli in più senza ridurre la tua liquidità.`
+      :`Ogni mese ti restano in media <b>${fmtSigned(avg)}</b> (entrate meno uscite${xt}), meno dei <b>${fmt(pac)}</b> del PAC. Per non intaccare la liquidità scendi di almeno <b>${fmt(Math.abs(m))}</b> al mese.`}</div></div>`+`<label class="q-pac-tg"><input type="checkbox" ${window._exclExtra?'checked':''} onchange="setExclExtra(this.checked)"><span>Escludi dal risparmio medio gli aiuti familiari <small>${X.n>0?`(${X.n} ${plu(X.n,'movimento segnato','movimenti segnati')}, entrate e uscite insieme: circa ${fmtSigned(X.avg)} al mese).`:'(nessun movimento segnato finora).'} Per segnarli apri la scheda Movimenti e scegli la categoria «👪 Aiuto familiare».</small></span></label>`+famSuggestHTML()
 }
 
 // ── Feedback esterno + cancellazione dati ──
@@ -3053,6 +3106,8 @@ runDemo=function(){
 }
 
 
+function goMarkInternal(){setFilter('all');const t=document.querySelector('#tx-body');if(t)t.closest('table').scrollIntoView({behavior:'smooth',block:'start'})}
+
 // ─── MOTORE CATEGORIE v2 ──────────────────────────────────────────
 // Regole base uguali per tutte le banche (esercenti noti, parole nella descrizione),
 // sovrascritte dalle regole specifiche di banca (categoria Intesa, codice MCC di Trade Republic)
@@ -3080,7 +3135,7 @@ const PICK_LIST=[
   ['Trasporti e auto','🚗','expense'],['Viaggi','✈️','expense'],['Svago','🎮','expense'],['Sport','🏋️','expense'],
   ['Shopping','🛍️','expense'],['Salute e cura persona','💊','expense'],['Assicurazioni','🛡️','expense'],['Imposte e tasse','🏛️','expense'],
   ['Gioco','🎰','expense'],['Commissioni','💸','expense'],['Bonifico in uscita','💸','expense'],['Altro','💳','expense'],
-  ['Stipendio','💰','income'],['Regali/Paghette','🎁','income'],['Poker/Scommesse','🎰','income'],['Rimborso','↩️','income'],
+  ['Stipendio','💰','income'],['Regali/Paghette','🎁','income'],['Aiuto familiare','👪','family'],['Poker/Scommesse','🎰','income'],['Rimborso','↩️','income'],
   ['Investimento','📈','investment'],['Disinvestimento','📉','disinvestment'],
   ['Trasf. interno','🔄','internal']
 ]
@@ -3209,6 +3264,7 @@ function _classify0(tx){
 function pickApply(tx,l,i){
   const ty=PICK_TYPE[l]
   tx.catLabel=l;tx.catIcon=i
+  if(ty==='family'){if(tx.isInternal&&!tx._pair){tx.isInternal=false;tx.internalNote=undefined};tx.catType=tx.amount>0?'income':'expense';return}
   if(ty==='internal'){tx.isInternal=true;tx.internalNote='Segnato da te come spostamento tra i tuoi conti';return}
   if(tx.isInternal&&!tx._pair){tx.isInternal=false;tx.internalNote=undefined}
   if(ty==='expense'&&tx.amount<0)tx.catType='expense'
