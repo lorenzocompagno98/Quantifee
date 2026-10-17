@@ -566,6 +566,46 @@ details.q-det>div{padding:0 1.2rem 1.1rem}
 .q-fbask a{background:var(--ink);color:#fff;margin-top:.2rem}
 .q-fbs a[hidden],.q-fbs button[hidden]{display:none}
 
+/* Barra azioni / obbligazioni */
+.q-mix{background:#fff;border:1px solid var(--border);border-radius:16px;padding:1.1rem 1.3rem 1rem;max-width:620px}
+.q-mix-top{display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:.9rem}
+.q-mix-a,.q-mix-r{display:flex;align-items:baseline;gap:.45rem;font-size:14px;font-weight:600}
+.q-mix-a b{font-size:34px;line-height:1;letter-spacing:-.02em;color:var(--teal);font-variant-numeric:tabular-nums}
+.q-mix-r b{font-size:34px;line-height:1;letter-spacing:-.02em;color:var(--blue);font-variant-numeric:tabular-nums}
+.q-mix-a span{color:var(--teal)}.q-mix-r span{color:var(--blue)}
+.q-mix-range{-webkit-appearance:none;appearance:none;width:100%;height:18px;border-radius:999px;margin:0;cursor:pointer;
+  background:linear-gradient(90deg,var(--teal) 0,var(--teal) var(--p),var(--blue) var(--p),var(--blue) 100%);box-shadow:inset 0 1px 3px rgba(14,27,38,.25)}
+.q-mix-range::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:34px;height:34px;border-radius:50%;background:#fff;border:3px solid var(--ink);box-shadow:0 2px 8px rgba(14,27,38,.35);cursor:grab;transition:transform .12s}
+.q-mix-range::-moz-range-thumb{width:28px;height:28px;border-radius:50%;background:#fff;border:3px solid var(--ink);box-shadow:0 2px 8px rgba(14,27,38,.35);cursor:grab}
+.q-mix-range::-moz-range-track{background:transparent}
+.q-mix-range:active::-webkit-slider-thumb{transform:scale(1.12);cursor:grabbing}
+.q-mix-range:focus-visible{outline:3px solid var(--ink);outline-offset:4px}
+.q-mix-ends{display:flex;justify-content:space-between;margin-top:.7rem}
+.q-mix-end{font:inherit;font-size:13px;font-weight:600;background:none;border:1px solid var(--border-s);border-radius:999px;padding:.25rem .8rem;cursor:pointer;color:var(--ink-sec)}
+.q-mix-end:hover{border-color:var(--ink);color:var(--ink)}
+.q-mix-end.on{background:var(--ink);border-color:var(--ink);color:#fff}
+.q-mix-out{display:flex;justify-content:space-between;align-items:center;gap:1rem;margin-top:.9rem;padding-top:.8rem;border-top:1px solid var(--border);font-size:14px;color:var(--ink-sec);font-weight:600}
+.q-mix-out input{padding:.4rem .6rem;border:1px solid var(--border-s);border-radius:6px;font-size:16px;font-weight:700;width:5rem;color:var(--ink)}
+.q-mix-out label{display:flex;align-items:center;gap:.4rem;font-weight:600}
+@media (prefers-reduced-motion:reduce){.q-mix-range::-webkit-slider-thumb{transition:none}}
+
+.q-sd{margin:.4rem 0 .8rem;font-size:14px}.q-sd>summary{font-size:14px}.q-sd>div{padding:.3rem 0 .2rem}
+
+/* Blocchi a tendina: titolo della sezione, spiegazione e tabella dentro */
+.q-blk{border-top:1px solid var(--border);margin-top:.2rem}
+.q-blk:first-of-type{border-top:0}
+.q-blk>summary{list-style:none;cursor:pointer;display:flex;justify-content:space-between;align-items:center;gap:1rem;padding:.9rem .2rem;font-weight:650;font-size:15.5px;color:var(--ink)}
+.q-blk>summary::-webkit-details-marker{display:none}
+.q-blk>summary>span::before{content:'\25B8';display:inline-block;width:1.1rem;color:var(--blue);transition:transform .15s}
+.q-blk[open]>summary>span::before{transform:rotate(90deg)}
+.q-blk>summary b{font-variant-numeric:tabular-nums;color:var(--ink)}
+.q-blk>summary:hover{color:var(--blue)}
+.q-blk>summary:focus-visible{outline:3px solid var(--ink);outline-offset:2px}
+.q-blk-b{padding:0 .2rem 1rem}
+.q-blkcard{padding:0}
+.q-blkcard .card{box-shadow:none;border:0;padding:0;margin:.8rem 0}
+@media (prefers-reduced-motion:reduce){.q-blk>summary>span::before{transition:none}}
+
 .q-table-wrap.tall{max-height:700px;overflow:auto}
 .q-table-wrap.tall thead th{position:sticky;top:0;z-index:2}
 .q-table-wrap.tall thead th:first-child{left:0;z-index:3}
@@ -772,10 +812,15 @@ details.q-det>div{padding:0 1.2rem 1.1rem}
     <!-- 3. CONFRONTO -->
     <section class="q-sec" id="confronto-sec">
       <h2>Commissioni esplicite</h2>
-      <p class="q-lead">Le stesse operazioni che hai fatto, calcolate con le tariffe pubbliche di altri conti. <b>Il confronto considera solo le commissioni esplicite</b> (bonifici, prelievi ATM, ricariche). I canoni dei conti e i costi nascosti non sono nel calcolo: i canoni sono elencati qui sotto solo come informazione. <span class="rules-badge" id="tariffe-ver"></span></p>
-      <div class="alert a" id="confronto-avviso"></div>
-      <div class="card" id="confronto-table"></div>
-      <div class="card" id="confronto-canoni"></div>
+      <p class="q-lead">Le stesse operazioni che hai fatto, calcolate con le tariffe pubbliche di altri conti. <b>Confronto storico, non una raccomandazione.</b> <span class="rules-badge" id="tariffe-ver"></span></p>
+      <div class="q-blkcard">
+        <details class="q-blk" id="confronto-blk"><summary><span>Come leggere il confronto</span></summary><div class="q-blk-b">
+          <p class="q-note" style="margin-top:0"><b>Sono le commissioni esplicite che trovi scritte nell'estratto conto</b>, come bonifici, prelievi ATM e ricariche di carta prepagata (le vedi in «Commissioni evitabili, già pagate»). Per ognuna cerchiamo la tariffa pubblica degli altri conti e calcoliamo quanto avresti pagato. Dove la tariffa non è disponibile (n/d) l'operazione non viene confrontata. I canoni mensili dei conti e i costi nascosti non sono nel calcolo: i canoni sono elencati in «Costi fissi dei piani scelti» solo come informazione.</p>
+          <div class="alert a" id="confronto-avviso"></div>
+          <div class="card" id="confronto-table"></div>
+          <div class="card" id="confronto-canoni"></div>
+        </div></details>
+      </div>
       <h2 style="margin-top:2rem">Costi nascosti</h2>
       <div class="card" id="liq-cmp"></div>
       <details class="q-det"><summary>Da dove vengono le tariffe</summary><div><div class="cmp-src" id="confronto-fonti"></div></div></details>
@@ -879,17 +924,22 @@ details.q-det>div{padding:0 1.2rem 1.1rem}
             <input type="number" step="1" min="1" max="40" id="sim-years" value="10" oninput="renderSimulation()"></label>
         </div>
 
-        <div class="q-st"><span>3</span> Che rendimento ipotizzi?</div>
-        <div class="q-chips">
-          <button type="button" class="q-chip" data-e="0" onclick="setSimEq(0)"><b>Solo obbligazioni</b><small>0% azioni</small></button>
-          <button type="button" class="q-chip" data-e="60" onclick="setSimEq(60)"><b>60 / 40</b><small>60% azioni, 40% obbligazioni</small></button>
-          <button type="button" class="q-chip" data-e="100" onclick="setSimEq(100)"><b>Solo azioni</b><small>100% azioni</small></button>
-          <label class="q-chip-in">% in azioni
-            <input type="number" step="5" min="0" max="100" id="sim-eq" value="60" oninput="onSimEq()"></label>
-          <label class="q-chip-in">Rendimento ipotizzato (%/anno)
-            <input type="number" step="0.5" id="sim-return" value="6.3" oninput="renderSimulation()"></label>
+        <div class="q-st"><span>3</span> In cosa vuoi investire?</div>
+        <div class="q-mix" style="--p:60%">
+          <div class="q-mix-top">
+            <div class="q-mix-a"><b id="mix-a">60%</b><span>azioni</span></div>
+            <div class="q-mix-r"><span>obbligazioni</span><b id="mix-b">40%</b></div>
+          </div>
+          <input type="range" id="sim-eq" class="q-mix-range" min="0" max="100" step="5" value="60" oninput="onSimEq()" aria-label="Quota in azioni, il resto è in obbligazioni">
+          <div class="q-mix-ends">
+            <button type="button" class="q-mix-end" data-e="100" onclick="setSimEq(100)">Solo azioni</button>
+            <button type="button" class="q-mix-end" data-e="0" onclick="setSimEq(0)">Solo obbligazioni</button>
+          </div>
+          <div class="q-mix-out"><span>Rendimento ipotizzato</span>
+            <label><input type="number" step="0.5" id="sim-return" value="6.3" oninput="renderSimulation()"> % l'anno</label>
+          </div>
         </div>
-        <p class="q-note">Il rendimento dipende dal prodotto che scegli, e non tutti i prodotti si possono comprare a rate: controlla cosa permette la tua banca. Obbligazioni e azioni qui sono fondi ed ETF: il dato è la media europea dal 2015 al 2024, al netto dei costi correnti (ESMA). Il rendimento della combinazione è la media pesata delle due (azioni 9,3%, obbligazioni 1,8%), calcolata da noi: puoi anche scrivere direttamente il rendimento che preferisci.</p>
+        <p class="q-note">Il rendimento dipende dal prodotto che scegli, e non tutti i prodotti si possono comprare a rate: controlla cosa permette la tua banca. Obbligazioni e azioni qui sono fondi ed ETF: il dato è la media europea dal 2015 al 2024, al netto dei costi correnti (ESMA). Sposta la barra per scegliere quanta parte è in azioni (rendimento 9,3%) e quanta in obbligazioni (1,8%): il rendimento è la media pesata, calcolata da noi. Puoi anche scrivere direttamente il rendimento che preferisci.</p>
         <details class="q-more q-prod"><summary>Che rendimento hanno avuto i prodotti più usati?</summary><div>
           <table class="q-ptab"><thead><tr><th>Prodotto</th><th>Cosa aspettarsi</th></tr></thead><tbody>
             <tr><td>Conto di deposito</td><td>Il tasso lo conosci alla firma e non cambia fino alla scadenza. Per esempio, a ottobre 2026 un deposito a un anno di BBVA paga il 2,8% lordo.</td></tr>
@@ -2522,7 +2572,7 @@ function renderBills(d){
     tag:'Commissioni evitabili, già pagate',
     num:fmt(tEv,tEv>=100?0:2),
     sub:tEv>0?`in ${nm} ${plu(nm,'mese','mesi')} di movimenti`:'nessuna trovata nel periodo',
-    intro:'Addebiti che trovi scritti nell\'estratto conto e che un\'altra banca non ti farebbe pagare, oppure ti farebbe pagare meno. A destra vedi da cosa è formato il totale.',
+    intro:'Addebiti che trovi scritti nell\'estratto conto e che un\'altra banca non ti farebbe pagare, oppure ti farebbe pagare meno. A destra vedi da cosa è formato il totale. Quanto pagheresti con altre banche: <a href="#confronto-sec" onclick="var b=document.getElementById(\'confronto-blk\');if(b)b.open=true">Commissioni esplicite</a>.',
     items:ev.map(g=>({count:g.count+'×',title:esc(g.desc.replace(/\s*→.*$/,'')),amt:g.total,
       d:`${g.count} ${plu(g.count,'addebito','addebiti')} su ${esc(listIt([...g.src].map(bn)))} · <b>${esc(g.alt||'')}</b>`})),
     totLabel:`Totale · ${nEv} ${plu(nEv,'addebito','addebiti')}`,
@@ -2894,14 +2944,18 @@ function setSimMode(m){
 const EQ_R=9.3,BOND_R=1.8
 function eqReturn(e){return Math.round((e/100*EQ_R+(1-e/100)*BOND_R)*100)/100}
 function setSimEq(e){document.getElementById('sim-eq').value=e;onSimEq()}
+function mixPaint(){
+  const r=document.getElementById('sim-eq');if(!r)return
+  const e=Math.max(0,Math.min(100,parseFloat(r.value)||0)),box=r.closest('.q-mix')
+  box.style.setProperty('--p',e+'%')
+  document.getElementById('mix-a').textContent=e+'%';document.getElementById('mix-b').textContent=(100-e)+'%'
+  document.querySelectorAll('.q-mix-end').forEach(b=>b.classList.toggle('on',parseFloat(b.dataset.e)===e))
+}
 function onSimEq(){
   let e=parseFloat(document.getElementById('sim-eq').value);if(!isFinite(e))e=60;e=Math.max(0,Math.min(100,e))
-  document.getElementById('sim-return').value=eqReturn(e);renderSimulation()
+  document.getElementById('sim-return').value=eqReturn(e);mixPaint();renderSimulation()
 }
-function simChips(){
-  const v=parseFloat(document.getElementById('sim-return').value)
-  document.querySelectorAll('.q-chip').forEach(c=>{const on=Math.abs(eqReturn(parseFloat(c.dataset.e))-v)<1e-9;c.classList.toggle('on',on);c.setAttribute('aria-pressed',on)})
-}
+function simChips(){mixPaint()}
 function pacCallout(){
   const el=document.getElementById('sim-margin');if(!el)return
   if(_simMode==='lump'){el.innerHTML='';return}
@@ -2997,6 +3051,7 @@ runDemo=function(){
     const p=document.getElementById('sim-pac');if(p){p.value=300;renderSimulation()}
   },0)
 }
+
 
 // ─── MOTORE CATEGORIE v2 ──────────────────────────────────────────
 // Regole base uguali per tutte le banche (esercenti noti, parole nella descrizione),
@@ -3786,9 +3841,9 @@ function sostituto(b){const bk=TARIFFE.banche[b];return bk&&bk.sostituto_imposta
 function sostitutoHTML(bs){
   const rows=bs.map(b=>({b,s:sostituto(b)})).filter(x=>x.s)
   if(!rows.length)return ''
-  return `<div class="sec-label" style="margin:1rem 0 .4rem">Chi fa da sostituto d'imposta</div>
+  return `<details class="q-blk"><summary><span>Chi fa da sostituto d'imposta</span></summary><div class="q-blk-b">
   <p class="q-note" style="margin:0 0 .5rem">Il sostituto d'imposta trattiene lui le tasse (26%) su interessi e plusvalenze e le versa allo Stato: ti arriva già il netto. Se non lo fa, devi dichiararle tu nella dichiarazione dei redditi.</p>
-  <ul class="q-note" style="padding-left:1.1rem;margin:0">${rows.map(x=>`<li><b>${esc(bankName(x.b))}</b>: ${x.s.plusvalenze?'sì, anche sulle plusvalenze degli investimenti':'<b>non sulle plusvalenze degli investimenti</b>: le dichiari tu'}${x.s.interessi?'; sì sugli interessi':''}. ${x.s.nota?`<span class="oc" style="max-width:none;text-align:left">${esc(x.s.nota)}</span>`:''}${x.s.fonte?` <a href="${x.s.fonte}" target="_blank" rel="noopener noreferrer" referrerpolicy="no-referrer">fonte</a>`:''}</li>`).join('')}</ul>`
+  <ul class="q-note" style="padding-left:1.1rem;margin:0">${rows.map(x=>`<li><b>${esc(bankName(x.b))}</b>: ${x.s.plusvalenze?'sì, anche sulle plusvalenze degli investimenti':'<b>non sulle plusvalenze degli investimenti</b>: le dichiari tu'}${x.s.interessi?'; sì sugli interessi':''}. ${x.s.nota?`<span class="oc" style="max-width:none;text-align:left">${esc(x.s.nota)}</span>`:''}${x.s.fonte?` <a href="${x.s.fonte}" target="_blank" rel="noopener noreferrer" referrerpolicy="no-referrer">fonte</a>`:''}</li>`).join('')}</ul></div></details>`
 }
 
 // ── scelta del piano: selettore comune (caricamento file, riepilogo, confronto) ──
@@ -3829,46 +3884,51 @@ function renderLiqCompare(d){
   renderPlanPanel()
   const {periodFrom,periodTo}=d,per=fmtDate(periodFrom)+' – '+fmtDate(periodTo)
   const c=oppCash(d),l=oppLiq(d),la=l?l.la:liqAnalysis(d)
+  const blkO=(t,amt)=>`<details class="q-blk"><summary><span>${t}</span>${amt!=null?`<b>${fmt(amt,2)}</b>`:''}</summary><div class="q-blk-b">`,blkC='</div></details>'
+  const used=new Map()
+  ;[c&&c.rows,l&&l.rows].forEach(rs=>(rs||[]).forEach(r=>{[{b:r.b,k:r.planKey,p:r.pl,bk:TARIFFE.banche[r.b]},r.best.c].forEach(x=>used.set(x.b+'|'+x.k+(x.dep?'|dep':''),x))}))
+  const planNotes=kind=>{const parts=[...used.values()].map(x=>{
+    const sec=x.p&&x.p[kind];if(!sec)return ''
+    const note=sec.nota||'',src=sec.fonte?[sec.fonte]:[]
+    if(!note&&!src.length)return ''
+    return `<li><b>${esc(candLabel(x))}</b>: ${esc(note)} ${src.map(u=>`<a href="${u}" target="_blank" rel="noopener noreferrer" referrerpolicy="no-referrer">fonte</a>`).join(' · ')}</li>`}).filter(Boolean)
+    return parts.length?`<ul class="q-note" style="margin-top:.8rem;padding-left:1.1rem">${parts.join('')}</ul>`:''}
   let h=`
-  <p class="q-lead" style="margin-bottom:.8rem">Simulazione sui tuoi movimenti, dal <b>${fmtDate(periodFrom)}</b> al <b>${fmtDate(periodTo)}</b>. Per ogni banca si confronta il piano predefinito con il migliore tra tutti quelli del nostro elenco, calcolato proprio sui tuoi saldi e sulla tua spesa. Nessuna proiezione sul resto dell'anno.</p>`
+  <p class="q-lead" style="margin-bottom:.8rem">Simulazione sui tuoi movimenti, dal <b>${fmtDate(periodFrom)}</b> al <b>${fmtDate(periodTo)}</b>. Per ogni banca si confronta il piano predefinito con il migliore del nostro elenco. Apri una voce per vedere spiegazione e tabella.</p>`
   h+='\u0001HV\u0001'
   // cashback
-  h+=`<div class="sec-label" style="margin:.8rem 0 .4rem">Cashback/saveback sulla spesa con carta</div>`
+  h+=blkO('Cashback/saveback sulla spesa con carta',c?c.total:null)
   if(c){
     h+=`<div class="q-table-wrap"><table class="q-table"><thead><tr><th>Banca</th><th>Spesa con carta</th><th>Quello che ricevi</th><th>Piano migliore per te</th><th>Con il migliore</th><th>Non ottenuto</th></tr></thead><tbody>${
       c.rows.map(r=>`<tr><td><b>${esc(bankName(r.b))}</b><br>${planSelectHTML(r.b)}</td><td>${fmt(r.spend)}</td><td>${fmt(r.actual,2)}<br><small>${r.pl.cashback.pct?String(r.pl.cashback.pct).replace('.',',')+'% '+_tipoCb(r.pl.cashback):'nessuno'}</small></td><td>${esc(candLabel(r.best.c))}<br><small>${String(r.best.c.p.cashback.pct).replace('.',',')}% ${_tipoCb(r.best.c.p.cashback)}${r.best.c.p.cashback.max_mese_eur!=null?', max '+fmt(r.best.c.p.cashback.max_mese_eur)+'/mese':''}</small></td><td>${fmt(r.best.n,2)}</td><td><b>${fmt(r.missed,2)}</b></td></tr>`).join('')}
       <tr><td colspan="5"><b>Totale nel periodo</b></td><td><b>${fmt(c.total,2)}</b></td></tr></tbody></table></div>`
   }else h+=`<p class="q-note">Nessuna spesa con carta riconosciuta nei movimenti caricati.</p>`
+  h+=`<p class="q-note">Cashback/saveback: percentuale sulla spesa con carta di ogni mese, con l'eventuale massimale mensile. Non sono considerate condizioni di attivazione e promozioni a tempo. Le condizioni cambiano: verifica sempre sul sito della banca.</p>`+planNotes('cashback')+blkC
   // interessi
-  h+=`<div class="sec-label" style="margin:1rem 0 .4rem">Interessi sui soldi che tieni sul conto (netti)</div>`
+  h+=blkO('Interessi sui soldi che tieni sul conto (netti)',l?l.total:null)
   if(l){
     h+=`<div class="q-table-wrap"><table class="q-table"><thead><tr><th>Banca</th><th>Saldo medio</th><th>Interessi del tuo piano</th><th>Piano migliore per te</th><th>Con il migliore</th><th>Non percepiti</th></tr></thead><tbody>${
       l.rows.map(r=>`<tr><td><b>${esc(bankName(r.b))}</b><br>${planSelectHTML(r.b)}</td><td>${fmt(r.avg)}</td><td>${fmt(r.actual,2)}<br><small class="oc">${esc(_fasceTxt(r.pl.interesse.fasce))} lordo</small>${r.real!=null?`<br><small class="oc">nei movimenti risultano ${fmt(r.real,2)}</small>`:''}</td><td>${esc(candLabel(r.best.c))}<br><small class="oc">${esc(_fasceTxt(r.best.c.p.interesse.fasce))} lordo</small>${r.best.c.dep?`<br><small class="oc">conto deposito: i soldi sono liberi ma per spenderli vanno riportati sul conto. Sul solo conto corrente: ${esc(candLabel(r.bestCC.c))}, ${fmt(r.bestCC.n,2)}</small>`:''}</td><td>${fmt(r.best.n,2)}</td><td><b>${fmt(r.missed,2)}</b></td></tr>`).join('')}
       <tr><td colspan="5"><b>Totale nel periodo</b></td><td><b>${fmt(l.total,2)}</b></td></tr></tbody></table></div>`
   }else h+=`<p class="q-note">Per calcolare gli interessi inserisci il saldo di oggi dei tuoi conti nella sezione Patrimonio: serve per ricostruire quanto hai tenuto sul conto giorno per giorno.</p>`
+  h+=`<p class="q-note">Interessi: tassi lordi annui per fasce di saldo, applicati ogni giorno al saldo ricostruito dai tuoi movimenti, meno la ritenuta del ${TAX_INT}%. Non sono considerati canoni, condizioni di attivazione e promozioni a tempo. I tassi cambiano: verifica sempre sul sito della banca. Elenco aggiornato al ${TARIFFE.versione.split('-').reverse().join('/')}.</p>`+planNotes('interesse')+blkC
   // investimenti
   let hv=''
   const iv=oppInv(d)
   if(iv){
     const pc=n=>String(n).replace('.',',')
-    hv+=`<div class="sec-label" style="margin:1rem 0 .4rem">Commissioni di gestione degli investimenti</div>
+    hv+=blkO('Commissioni di gestione degli investimenti',iv.total)+`
     <div class="q-table-wrap"><table class="q-table"><thead><tr><th>Banca</th><th>Investito</th><th>Tipo considerato</th><th>Costi di gestione attuali</th><th>Costi di gestione con ETF passivo</th><th>Costi evitabili</th></tr></thead><tbody>${
       iv.rows.map(r=>`<tr><td><b>${esc(bankName(r.b))}</b></td><td>${fmt(r.tot+r.i0)}<br><small class="oc">${r.n?r.n+' '+plu(r.n,'acquisto','acquisti'):''}${r.n&&r.i0>0?' + ':''}${r.i0>0?fmt(r.i0)+' già investiti prima':''}</small></td><td>${r.type==='attivo'?'Fondi attivi':'ETF passivi'}<br><small class="oc">${pc(r.type==='attivo'?iv.terA:iv.terP)}% l'anno</small></td><td>${fmt(r.actual,2)}</td><td>${fmt(r.best,2)}<br><small class="oc">${pc(iv.terP)}% l'anno</small></td><td><b>${fmt(r.missed,2)}</b></td></tr>`).join('')}
       <tr><td colspan="5"><b>Totale nel periodo</b></td><td><b>${fmt(iv.total,2)}</b></td></tr></tbody></table></div>
-    <p class="q-note"><b>Intesa Sanpaolo e UniCredit</b>: fondi a gestione attiva, costi ricorrenti stimati al <b>${pc(iv.terA)}% l'anno</b>. <b>Trade Republic</b>: ETF passivi, <b>${pc(iv.terP)}%</b>, usato come riferimento. <b>Revolut</b> offre ETF ma non è sostituto d'imposta: non è mai proposto come alternativa. Le percentuali sono medie ESMA riportate da Banca d'Italia, modificabili nei parametri, e valgono per ogni versamento dal giorno dell'acquisto all'ultimo movimento caricato.</p>
-    <p class="q-note"><b>Anche le banche tradizionali offrono ETF e piani di investimento in ETF, ma per ora non li consideriamo:</b> ${etfCompareTxt()}</p>`
+`
+    hv+=`<p><b>Intesa Sanpaolo e UniCredit</b>: fondi a gestione attiva, costi ricorrenti stimati al <b>${pc(iv.terA)}% l'anno</b>. <b>Trade Republic</b>: ETF passivi, <b>${pc(iv.terP)}%</b>, usato come riferimento. <b>Revolut</b> offre ETF ma non è sostituto d'imposta: non è mai proposto come alternativa. Le percentuali sono medie ESMA riportate da Banca d'Italia, modificabili nei parametri, e valgono per ogni versamento dal giorno dell'acquisto all'ultimo movimento caricato.</p>
+    <p><b>Anche le banche tradizionali offrono ETF e piani di investimento in ETF, ma per ora non li consideriamo:</b> ${etfCompareTxt()}</p>`
   }
   if(iv&&iv.rows.some(r=>r.b==='revolut'))hv+=`<div class="alert a"><b>Revolut non fa da sostituto d'imposta.</b> Hai investito su Revolut: le plusvalenze e le imposte sugli investimenti vanno dichiarate da te nella dichiarazione dei redditi. Questo costo non è incluso nei calcoli.</div>`
+  if(iv)hv+=blkC
   h+=sostitutoHTML(loadedBanks())
   if(la&&la.missing&&la.missing.length)h+=`<div class="alert a">Hai caricato anche i movimenti di ${esc(listIt(la.missing.map(bankName)))}, ma non ne hai inserito il saldo nella sezione Patrimonio: quella banca non pesa nel calcolo degli interessi.</div>`
-  // note e fonti dei piani coinvolti
-  const used=new Map()
-  ;[c&&c.rows,l&&l.rows].forEach(rs=>(rs||[]).forEach(r=>{[{b:r.b,k:r.planKey,p:r.pl,bk:TARIFFE.banche[r.b]},r.best.c].forEach(x=>used.set(x.b+'|'+x.k+(x.dep?'|dep':''),x))}))
-  h+=`<ul class="q-note" style="margin-top:.8rem;padding-left:1.1rem">${[...used.values()].map(x=>{
-    const note=[x.p.interesse&&x.p.interesse.nota,x.p.cashback&&x.p.cashback.nota].filter(Boolean)
-    const src=[x.p.interesse&&x.p.interesse.fonte,x.p.cashback&&x.p.cashback.fonte].filter((v,i,a)=>v&&a.indexOf(v)===i)
-    return `<li><b>${esc(candLabel(x))}</b>: ${esc(note.join(' '))} ${src.map((u,i)=>`<a href="${u}" target="_blank" rel="noopener noreferrer" referrerpolicy="no-referrer">fonte${src.length>1?' '+(i+1):''}</a>`).join(' · ')}</li>`}).join('')}</ul>
-  <p class="q-note">Interessi: tassi lordi annui per fasce di saldo, applicati ogni giorno al saldo ricostruito dai tuoi movimenti, meno la ritenuta del ${TAX_INT}%. Cashback/saveback: percentuale sulla spesa con carta di ogni mese, con l'eventuale massimale mensile. Non sono considerati canoni, condizioni di attivazione e promozioni a tempo. I tassi cambiano: verifica sempre sul sito della banca. Elenco aggiornato al ${TARIFFE.versione.split('-').reverse().join('/')}.</p>`
   el.innerHTML=h.replace('\u0001HV\u0001',()=>hv)
 }
 
