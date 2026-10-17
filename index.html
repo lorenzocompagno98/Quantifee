@@ -1326,7 +1326,6 @@ function deduplicate(txs){
   sorted.forEach(tx=>{
     const txt=(tx.op+' '+tx.detail).toLowerCase()
     if(txt.includes('trade republic')&&tx.source==='intesa'&&tx.amount<0){tx.isInternal=true;tx.internalNote='Investimento → Trade Republic'}
-    if(tx.source==='tr'&&(tx.op==='TRANSFER_INSTANT_INBOUND'||tx.op==='TRANSFER_INBOUND')&&tx.detail.toLowerCase().includes('compagno')){tx.isInternal=true;tx.internalNote='Da Intesa Sanpaolo'}
   })
 
   // Pattern: "Ricarica Carta Prepagata" (uscita) + "Ricarica" (entrata), stesso giorno, stesso importo, stessa banca
@@ -2493,7 +2492,7 @@ function billHTML(o){
     </div>
     <div class="q-bill-items">
       ${o.items.length?`<ul>${o.items.map(i=>`<li class="q-line">
-        <div class="q-line-head"><span class="q-line-t">${i.count?`<span class="q-count">${i.count}</span>`:''}${i.title}</span><span class="q-leader"></span><span class="q-line-amt">${fmt(i.amt,2)}</span><span class="q-line-pc">${Math.round(i.amt/tot*100)}%</span></div>
+        <div class="q-line-head"><span class="q-line-t">${i.count?`<span class="q-count">${i.count}</span>`:''}${i.title}</span><span class="q-leader"></span><span class="q-line-amt">${fmt(i.amt,2)}</span></div>
         <div class="q-line-bar"><span style="width:${Math.max(2,i.amt/tot*100).toFixed(1)}%"></span></div>
         <div class="q-line-d">${i.d}</div>${i.more||''}</li>`).join('')}</ul>
         <div class="q-bill-totline"><span>${o.totLabel}</span><span>${fmt(o.items.reduce((s,i)=>s+i.amt,0),2)}</span></div>`
@@ -3092,8 +3091,10 @@ function wipeData(){
 const _rd=runDemo
 runDemo=function(){
   _rd.apply(this,arguments)
-  const DEMO_BAL={intesa:{cash:2800,inv:700},tr:{cash:3200,inv:3900}}
+  const DEMO_BAL={intesa:{cash:2800,inv:18000},tr:{cash:3200,inv:3900}}
   setTimeout(()=>{
+    allTx.forEach(t=>{if(/ROSSI (MARIA|ANNA) \(demo\)/.test(t.detail||''))pickApply(t,'Aiuto familiare','👪')})
+    try{recomputeKeepView()}catch(e){}
     document.querySelectorAll('#wealth-balance-inputs .q-bank-in').forEach(box=>{
       const ins=box.querySelectorAll('input[type=number]')
       const m=(ins[0]&&ins[0].getAttribute('oninput')||'').match(/setWealth\('(\w+)'/)
@@ -3701,7 +3702,7 @@ function demoTx(){
       // Trade Republic: giroconto mensile da Intesa, acquisto ETF, interessi, qualche spesa con carta
       if(BUY[m]){
         add(m,4,'Bonifico a favore','TRADE REPUBLIC PIANO ACCUMULO','Bonifici in uscita',-BUY[m])
-        add(m,4,'TRANSFER_INSTANT_INBOUND','Da DEMO COMPAGNO','Trasferimento',BUY[m],'tr',{fee:0,catType:'transfer'})
+        add(m,4,'TRANSFER_INSTANT_INBOUND','Da CONTO PROPRIO (demo)','Trasferimento',BUY[m],'tr',{fee:0,catType:'transfer'})
         add(m,5,'BUY','ETF Azionario Globale (demo)','Acquisto ETF/titolo',-BUY[m],'tr',{fee:0,catType:'investment'})
       }
       add(m,28,'INTEREST_PAYMENT','Interessi','Interessi TR',Math.round((6+m*0.3)*100)/100,'tr',{fee:0,catType:'income'})
@@ -3713,6 +3714,10 @@ function demoTx(){
   add(2,9,'Pagamento POS','OFFICINA AUTO DEMO','Trasporti varie',-900)
   add(3,9,'Pagamento POS','NEGOZIO ABBIGLIAMENTO','Abbigliamento e accessori',-120)
   add(5,16,'Riscatto fondo','FONDO AZIONARIO DEMO','',600)
+  add(6,9,'Bonifico ricevuto','Bonifico da ROSSI MARIA (demo)','Bonifici ricevuti',2000)
+  add(3,20,'Bonifico ricevuto','Bonifico da ROSSI MARIA (demo)','Bonifici ricevuti',800)
+  add(9,7,'Bonifico a favore','Bonifico a ROSSI ANNA (demo)','Bonifico in uscita',-500)
+  add(1,12,'Bonifico a favore','Bonifico a BIANCHI LUCA (demo)','Bonifico in uscita',-150)
   return txs
 }
 
