@@ -1584,7 +1584,7 @@ function renderWealthChart(){
       const monthEnd=new Date(m.getFullYear(),m.getMonth()+1,0,23,59,59)
       while(idx<bankTx.length&&bankTx[idx].date<=monthEnd){
         const t=bankTx[idx]
-        if(t.catType==='investment'||t.catType==='disinvestment'){
+        if(!t.isInternal&&(t.catType==='investment'||t.catType==='disinvestment')){
           cumInvest+=-t.amount  // BUY (negative amount) -> +cost; SELL (positive) -> -cost
         }else{
           cumTotal+=t.amount
@@ -1924,16 +1924,19 @@ function renderCharts(){
   const cats={}
   pExp.forEach(t=>{const k=t.catLabel||'Altro';cats[k]=(cats[k]||0)+Math.abs(t.amount)})
   const catsSorted=Object.entries(cats).sort((a,b)=>b[1]-a[1])
-  const topCats=catsSorted.slice(0,12>=catsSorted.length?12:11)
-  if(catsSorted.length>12)topCats.push(['Altre voci',catsSorted.slice(11).reduce((s,[,v])=>s+v,0)])
+  const _totC=catsSorted.reduce((q,[,v])=>q+v,0)
+  let _nShow=0;while(_nShow<catsSorted.length&&_nShow<17&&catsSorted[_nShow][1]/_totC>=0.01)_nShow++
+  if(catsSorted.length-_nShow<2)_nShow=catsSorted.length
+  const topCats=catsSorted.slice(0,_nShow),otherCats=catsSorted.slice(_nShow)
+  if(otherCats.length)topCats.push(['Altre voci',otherCats.reduce((q,[,v])=>q+v,0)])
   const totalExp=topCats.reduce((s,[,v])=>s+v,0)
 
   // Update total label
   const ttEl=document.getElementById('treemap-total')
   if(ttEl)ttEl.textContent=totalExp>0?fmt(totalExp):''
-  const TM_COLORS=['#1F6F8B','#13876A','#C2362B','#8F5A00','#6B4DB0','#2B59C3','#B5470F','#3C7A3A','#8A3B6E','#4B5A68','#0E7C86','#7A6A00']
+  const TM_COLORS=['#1F6F8B','#13876A','#C2362B','#8F5A00','#6B4DB0','#2B59C3','#B5470F','#3C7A3A','#8A3B6E','#4B5A68','#0E7C86','#7A6A00','#A33A52','#1D5C9E','#5E7A1F','#8B4B2B','#2F6B5C','#7A4FA0','#555555']
   const tml=document.getElementById('tm-list')
-  if(tml)tml.innerHTML=totalExp>0?topCats.map(([k,v],i)=>`<li><span><span class="sw" style="background:${TM_COLORS[i]}"></span>${esc(k)}</span><b>${fmt(v)}</b><span class="m">${Math.round(v/totalExp*100)}% delle uscite</span></li>`).join(''):'<li>Nessuna spesa nel periodo scelto</li>'
+  if(tml)tml.innerHTML=totalExp>0?topCats.map(([k,v],i)=>`<li><span><span class="sw" style="background:${TM_COLORS[i]}"></span>${esc(k)}</span><b>${fmt(v)}</b><span class="m">${Math.round(v/totalExp*100)}% delle uscite${k==='Altre voci'&&otherCats.length?': '+otherCats.slice(0,8).map(([n,x])=>esc(n)+' '+fmt(x)).join(', ')+(otherCats.length>8?' e altre '+(otherCats.length-8):''):''}</span></li>`).join(''):'<li>Nessuna spesa nel periodo scelto</li>'
 
   function layoutTreemap(nodes,x,y,w,h){
     const rects=[]
@@ -1970,7 +1973,7 @@ function renderCharts(){
         <clipPath id="cp${i}"><rect x="${r.x+2}" y="${r.y+2}" width="${Math.max(rw-4,0)}" height="${Math.max(rh-4,0)}"/></clipPath>
         ${showName?`<text clip-path="url(#cp${i})" x="${r.x+6}" y="${r.y+16}" font-size="11" fill="${tc}" font-family="-apple-system,sans-serif" font-weight="500">${esc(r.name)}</text>`:''}
         ${showAmt?`<text clip-path="url(#cp${i})" x="${r.x+6}" y="${r.y+30}" font-size="10" fill="${tc2}" font-family="-apple-system,sans-serif">€${Math.round(r.value).toLocaleString('it-IT')} · ${pct}%</text>`:''}
-        <title>${esc(r.name)}: €${Math.round(r.value).toLocaleString('it-IT')} (${pct}%)</title>
+        <title>${esc(r.name)}: €${Math.round(r.value).toLocaleString('it-IT')} (${pct}%)${r.name==='Altre voci'?'. Contiene: '+otherCats.map(([n,x])=>n+' €'+Math.round(x).toLocaleString('it-IT')).join(', '):''}</title>
       </g>`}).join('')
     document.getElementById('waffle-wrap').innerHTML=
       `<svg width="100%" viewBox="0 0 ${TW} ${TH}" xmlns="http://www.w3.org/2000/svg" style="display:block;border-radius:6px">${svgContent}</svg>`
@@ -2603,7 +2606,7 @@ function renderFlussi(){
   const mx=rows.map(r=>maxOf(r.ym)).sort((a,b)=>a-b),medMax=mx.length?(mx[mx.length>>1]+mx[(mx.length-1)>>1])/2:0
   const bigOf=(ym)=>{const m=maxOf(ym);return rows.length>2&&m>=200&&m>=medMax*1.5}
   const sum=k=>rows.reduce((s,r)=>s+r[k],0)
-  t.innerHTML=`<thead><tr><th>Mese</th><th>Entrate</th><th>Uscite</th><th>Parziale<small>entrate − uscite</small></th><th>Investimenti<small>acquisti − riscatti</small></th><th>Totale<small>variazione della liquidità</small></th></tr></thead><tbody>`+
+  t.innerHTML=`<thead><tr><th>Mese</th><th>Entrate</th><th>Uscite</th><th>Parziale<small>entrate − uscite</small></th><th>Investimenti<small>acquisti − riscatti</small></th><th>Liquidità rimasta<small>dopo gli investimenti</small></th></tr></thead><tbody>`+
     rows.map(r=>`<tr class="${part[r.ym]?'part ':''}${window.tmMonth===r.ym?'sel':''}"><td><button class="q-exp" onclick="toggleMonth('${r.ym}',this)" aria-expanded="false" aria-label="Mostra il dettaglio di ${ymName(r.ym)}">+</button><button class="q-mbtn" onclick="pickTmMonth('${r.ym}')" title="Vedi solo le spese di questo mese nel grafico a rettangoli">${ymName(r.ym)}</button>${part[r.ym]?'<span class="q-tag">parziale</span>':''}${bigOf(r.ym,r)?'<span class="q-tag q-flag">spesa grande</span>':''}</td>
       <td>${fmt(r.in)}</td><td>${fmt(r.out)}</td>
       <td class="${cls(r.par)}">${sg(r.par)}</td>
@@ -2622,7 +2625,7 @@ function renderFlussi(){
   const avg=k=>use.reduce((s,r)=>s+r[k],0)/use.length
   const bestM=use.reduce((a,r)=>r.par>a.par?r:a,use[0]),worstM=use.reduce((a,r)=>r.par<a.par?r:a,use[0])
   const two=use.length>1
-  const defs=[{k:'in',l:'Entrate'},{k:'out',l:'Uscite'},{k:'par',l:'Parziale',s:'entrate − uscite',sg:true},{k:'net',l:'Investimenti',s:'acquisti − riscatti',inv:true},{k:'tot',l:'Totale',s:'variazione della liquidità',sg:true,bold:true}]
+  const defs=[{k:'in',l:'Entrate'},{k:'out',l:'Uscite'},{k:'par',l:'Parziale',s:'entrate − uscite',sg:true},{k:'net',l:'Investimenti',s:'acquisti − riscatti',inv:true},{k:'tot',l:'Liquidità rimasta',s:'dopo gli investimenti',sg:true,bold:true}]
   const val=(d,v)=>d.inv?sg(-v):d.sg?sg(v):fmt(v)
   const kls=(d,v)=>d.sg?cls(v):d.inv?'q-inv':''
   st.innerHTML=`<thead><tr><th></th><th>Media al mese<small>${use.length} ${plu(use.length,'mese','mesi')}</small></th>`+
@@ -3009,13 +3012,10 @@ const GENERIC_LABELS=new Set(['Altro','Altre uscite','Addebito vario','Altre ent
 
 // ── elenco delle correzioni manuali, con il tipo che comportano ───
 const PICK_LIST=[
-  ['Supermercato','🛒','expense'],['Ristoranti','🍽️','expense'],['Affitto','🏠','expense'],['Utenze','⚡','expense'],
-  ['Casa','🏡','expense'],['Trasporti','🚗','expense'],['Carburante','⛽','expense'],['Auto','🔧','expense'],
-  ['Viaggi','✈️','expense'],['Telefonia','📱','expense'],['Abbonamenti','📺','expense'],['Sport','🏋️','expense'],
-  ['Svago','🎮','expense'],['Spettacoli','🎭','expense'],['Shopping','🛍️','expense'],['Abbigliamento','👕','expense'],
-  ['Tecnologia','💻','expense'],['Salute','💊','expense'],['Cura persona','💆','expense'],['Formazione','📚','expense'],
-  ['Assicurazioni','🛡️','expense'],['Imposte e tasse','🏛️','expense'],['Regali','🎁','expense'],['Gioco','🎰','expense'],
-['Commissioni','💸','expense'],['Altro','💳','expense'],
+  ['Affitto','🏠','expense'],['Casa e utenze','🏡','expense'],['Supermercato','🛒','expense'],['Ristoranti e bar','🍽️','expense'],
+  ['Trasporti e auto','🚗','expense'],['Viaggi','✈️','expense'],['Svago','🎮','expense'],['Sport','🏋️','expense'],
+  ['Shopping','🛍️','expense'],['Salute e cura persona','💊','expense'],['Assicurazioni','🛡️','expense'],['Imposte e tasse','🏛️','expense'],
+  ['Gioco','🎰','expense'],['Commissioni','💸','expense'],['Bonifico in uscita','💸','expense'],['Altro','💳','expense'],
   ['Stipendio','💰','income'],['Regali/Paghette','🎁','income'],['Poker/Scommesse','🎰','income'],['Rimborso','↩️','income'],
   ['Investimento','📈','investment'],['Disinvestimento','📉','disinvestment'],
   ['Trasf. interno','🔄','internal']
@@ -3075,8 +3075,33 @@ function incomeRule(t){
   return null
 }
 
+
+// ── raggruppamento in poche categorie: ogni banca usa nomi diversi per le stesse cose ──
+const MACRO_GROUPS={
+  'Casa e utenze':['Casa','Utenze','Telefonia','TV, Internet, telefono','Manutenzione casa','Elettrodomestici, arredamento e giardino','Casa/Elettrodomestici','Riscaldamento'],
+  'Supermercato':['Alimentari','Enoteca','Supermercati'],
+  'Ristoranti e bar':['Ristoranti','Bar/Caffè','Fast food'],
+  'Trasporti e auto':['Trasporti','Trasporti, noleggi, taxi e parcheggi','Carburante','Auto','Pedaggi','Parcheggio'],
+  'Viaggi':['Voli','Viaggi/Booking','Autonoleggio'],
+  'Svago':['Spettacoli','Cinema/Teatro','Libri/Edicola','Libri, film e musica','Tempo libero varie','Abbonamenti','Software'],
+  'Shopping':['Abbigliamento','Regali','Tecnologia','Elettronica'],
+  'Salute e cura persona':['Salute','Spese mediche','Analisi mediche','Farmacia','Prodotti vista e udito','Cura persona'],
+  'Altro':['Altro (carta TR)','Addebito vario','Altre uscite','Prelievi','Formazione','Associazioni']
+}
+const MACRO_MAP={};const MACRO_ICON={}
+PICK_LIST.forEach(([l,i])=>MACRO_ICON[l]=i)
+Object.keys(MACRO_GROUPS).forEach(m=>MACRO_GROUPS[m].forEach(f=>MACRO_MAP[f]=m))
+function applyMacro(tx){
+  if(tx.catType!=='expense'||!(tx.amount<0))return
+  const m=MACRO_MAP[tx.catLabel];if(m){tx.catLabel=m;tx.catIcon=MACRO_ICON[m]||tx.catIcon}
+}
+
 // ── classificazione di un movimento ────────────────────────────────
 function classify(tx){
+  if(tx._cl)return
+  _classify0(tx);applyMacro(tx)
+}
+function _classify0(tx){
   if(tx._cl){return}
   tx._cl=true
   const txt=txText(tx)
