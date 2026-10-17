@@ -881,13 +881,15 @@ details.q-det>div{padding:0 1.2rem 1.1rem}
 
         <div class="q-st"><span>3</span> Che rendimento ipotizzi?</div>
         <div class="q-chips">
-          <button type="button" class="q-chip" data-r="1.8" onclick="setSimReturn(1.8)"><b>Obbligazioni</b><small>1,8% l'anno</small></button>
-          <button type="button" class="q-chip" data-r="5.5" onclick="setSimReturn(5.5)"><b>Metà e metà</b><small>5,5% l'anno</small></button>
-          <button type="button" class="q-chip" data-r="9.3" onclick="setSimReturn(9.3)"><b>Azioni</b><small>9,3% l'anno</small></button>
-          <label class="q-chip-in">Oppure scegli tu (%)
-            <input type="number" step="0.5" id="sim-return" value="5.5" oninput="renderSimulation()"></label>
+          <button type="button" class="q-chip" data-e="0" onclick="setSimEq(0)"><b>Solo obbligazioni</b><small>0% azioni</small></button>
+          <button type="button" class="q-chip" data-e="60" onclick="setSimEq(60)"><b>60 / 40</b><small>60% azioni, 40% obbligazioni</small></button>
+          <button type="button" class="q-chip" data-e="100" onclick="setSimEq(100)"><b>Solo azioni</b><small>100% azioni</small></button>
+          <label class="q-chip-in">% in azioni
+            <input type="number" step="5" min="0" max="100" id="sim-eq" value="60" oninput="onSimEq()"></label>
+          <label class="q-chip-in">Rendimento ipotizzato (%/anno)
+            <input type="number" step="0.5" id="sim-return" value="6.3" oninput="renderSimulation()"></label>
         </div>
-        <p class="q-note">Il rendimento dipende dal prodotto che scegli, e non tutti i prodotti si possono comprare a rate: controlla cosa permette la tua banca. Obbligazioni e azioni qui sono fondi ed ETF: il dato è la media europea dal 2015 al 2024, al netto dei costi correnti (ESMA). «Metà e metà» è la media semplice delle due, calcolata da noi.</p>
+        <p class="q-note">Il rendimento dipende dal prodotto che scegli, e non tutti i prodotti si possono comprare a rate: controlla cosa permette la tua banca. Obbligazioni e azioni qui sono fondi ed ETF: il dato è la media europea dal 2015 al 2024, al netto dei costi correnti (ESMA). Il rendimento della combinazione è la media pesata delle due (azioni 9,3%, obbligazioni 1,8%), calcolata da noi: puoi anche scrivere direttamente il rendimento che preferisci.</p>
         <details class="q-more q-prod"><summary>Che rendimento hanno avuto i prodotti più usati?</summary><div>
           <table class="q-ptab"><thead><tr><th>Prodotto</th><th>Cosa aspettarsi</th></tr></thead><tbody>
             <tr><td>Conto di deposito</td><td>Il tasso lo conosci alla firma e non cambia fino alla scadenza. Per esempio, a ottobre 2026 un deposito a un anno di BBVA paga il 2,8% lordo.</td></tr>
@@ -2840,7 +2842,8 @@ const SRC={
  bdinv:['Banca d\'Italia, L\'economia per tutti, «Parliamo di investimenti. C\'è fondo e fondo…» (costi annui ESMA)','https://economiapertutti.bancaditalia.it/notizie-e-rubriche/notizie/parliamo-di-investimenti-c-fondo-e-fondo/'],
  ade:['Agenzia delle Entrate, Risposta n. 500/2021 (sostituti d\'imposta e ritenute)','https://www.agenziaentrate.gov.it/portale/documents/20143/3654801/Risposta+500+del+2021.pdf/bb4f5991-6ed3-3435-e7c2-e44a4d6fd9f1'],
  icc:['Banca d\'Italia, Indagine sul costo dei conti correnti nel 2024','https://www.bancaditalia.it/pubblicazioni/indagine-costo-cc/indagine-costo-cc2025/index.html'],
- invgo:['InvestoPro (gruppo Intesa Sanpaolo), offerta Go: 4,90 € a ordine su ETF e azioni di Borsa Italiana','https://www.investopro.com/promo-go'],
+ trord:['Trade Republic, assistenza: commissioni di esecuzione degli ordini (1 € di regolamento esterno a ordine)','https://support.traderepublic.com/it-it/784-Are-there-commissions-for-order-execution'],
+  invgo:['InvestoPro (gruppo Intesa Sanpaolo), offerta Go: 4,90 € a ordine su ETF e azioni di Borsa Italiana','https://www.investopro.com/promo-go'],
  invcond:['InvestoPro, Condizioni economiche Trading (12 € a ordine, 9 € per clienti Intesa Sanpaolo)','https://www.investopro.com/resources/docs/it/Condizioni-economiche-InvestoPro-Trading.pdf'],
  esma:['ESMA, Costs and Performance of EU Retail Investment Products (marzo 2026), tabella MR-CP.14','https://www.esma.europa.eu/sites/default/files/2026-03/ESMA50-1949966494-4065_Market_Report_-_Costs_and_Performance_of_EU_Retail_Investment_Products.pdf'],
  buf:['Berkshire Hathaway, lettera agli azionisti 1993','https://www.berkshirehathaway.com/letters/1993.html'],
@@ -2852,7 +2855,7 @@ const srcList=ks=>'<ul class="q-srcs">'+ks.map(k=>`<li><a href="${SRC[k][1]}" ta
 const MORE={
  liq:{q:'Cosa sono gli interessi sulla liquidità?',t:`Sono quello che la banca ti paga ogni anno sui soldi che lasci fermi. Ci sono due tipi di conto.</p><p><b>Conto corrente.</b> È quello di tutti i giorni (stipendio, spesa). Alcune banche pagano interessi lordi anche sul conto corrente (Revolut e Trade Republic), altre no (Intesa Sanpaolo e UniCredit).</p><p>Per esempio, BBVA offre il 4% lordo annuo per i primi 6 mesi, solo se il conto viene aperto entro l'11/12/2026.</p><p><b>Conto di deposito.</b> È pensato per i risparmi: ci versi dei soldi e maturano interessi, di solito più alti. Per spenderli devi prima spostarli sul conto corrente.</p><p><b>Interessi lordi e netti.</b> Il tasso è annuo e lordo: con il 2% lordo prendi 2 € l'anno ogni 100 € fermi. Il tasso lo decide ogni banca.</p><p><b>Le tasse.</b> Gli interessi sono tassati al 26%: su 1.000 € al 2% lordo gli interessi sono 20 €, e ti restano 0,74 × 20 = 14,80 €. Alcune banche sono sostituti d'imposta: trattengono loro l'imposta e ti pagano gli interessi già netti, e non devi dichiarare nulla. Se la tua banca non lo fa, l'imposta la dichiari tu.`,s:['dep','ade','mir','bbvacc']},
  sb:{q:'Cos\'è il cashback/saveback?',t:`Ogni volta che paghi con la carta, alcune banche ti restituiscono una piccola percentuale di quello che spendi. Se la somma ti viene accreditata sul conto, di solito si chiama <b>cashback</b>. Se invece viene investita a tuo nome, si chiama <b>saveback</b>. <b>Esempio:</b> con l'1%, se spendi 100 € ne torna 1 €, sul conto o investito, a seconda della banca.</p><p><b>Le regole cambiano da banca a banca.</b> Per esempio, BBVA, in promozione per chi apre il conto entro l'11/12/2026, accredita sul conto il 4% sugli acquisti con la carta di debito per i primi 6 mesi, sulle prime 210 € di spesa al mese (fino a 50 € in tutto). Con Trade Republic il saveback viene investito: una carta può dare l'1% sui pagamenti idonei, fino a un massimo di 15 € al mese, e chiedere di versare almeno 50 € al mese in un piano di accumulo.</p><p><b>Perché la nostra cifra è ottimistica.</b> Calcoliamo l'1% su tutta la tua spesa con carta, senza massimali mensili e senza condizioni (per esempio i 50 € al mese del piano di accumulo). Quello che avresti davvero potrebbe essere più basso, o zero.`,s:['bbvacb','trsb']},
- gest:{q:'Cosa sono le commissioni di gestione?',t:`Quando metti i soldi in un fondo, chi lo gestisce si fa pagare ogni anno una piccola percentuale di quello che hai investito. Nessuno ti manda un conto da pagare: la percentuale viene tolta direttamente dal valore del tuo investimento, ed è per questo che non la vedi sull'estratto conto. <b>Esempio:</b> con una commissione del 2% l'anno, su 1.000 € ne paghi 20 ogni anno.</p><p><b>Ci sono due tipi di fondi.</b> Nel <b>fondo attivo</b> un gestore sceglie dove investire e cerca di fare meglio del mercato: costa di più. Nel <b>fondo passivo</b> (detto anche indicizzato) non si sceglie niente: si copia un indice, cioè un elenco di aziende, e costa molto meno. L'<b>ETF</b> è un tipo di fondo passivo che si compra e si vende in borsa come un'azione.</p><div class="q-ch"><div class="q-ch-t">10.000 € investiti per 10 anni, stesso rendimento lordo (7% l\'anno)</div><div class="q-ch-r"><span>Costo 2% l\'anno<br><small>come un fondo attivo caro</small></span><div class="q-ch-b"><i style="width:85%"></i></div><b>16.300 €</b></div><div class="q-ch-r"><span>Costo 0,3% l\'anno<br><small>come un ETF</small></span><div class="q-ch-b q-ch-g"><i style="width:100%"></i></div><b>19.100 €</b></div><div class="q-ch-d">Differenza: circa <b>2.800 €</b> in 10 anni, solo per i costi.</div><div class="q-ch-n">Esempio semplificato: rendimento lordo 7% l\'anno meno il costo annuo, uguale per i due. Non è una previsione. Per un ordine di grandezza reale: secondo l\'ESMA, nei fondi azionari UE degli ultimi 10 anni i costi annui medi sono circa 1,4% per gli attivi e 0,3% per i passivi.</div></div><p><b>Esistono diversi tipi di commissioni.</b> Noi calcoliamo solo i costi ricorrenti.<br>• <b>Costi ricorrenti</b> (o commissioni di gestione): ogni anno vengono tolti dal patrimonio del fondo, quindi il tuo investimento vale un po' meno senza nessun addebito sul conto. <b>Li calcoliamo per ogni banca che hai caricato, con una percentuale tipica che dipende dal tipo di fondo (attivo o passivo).</b><br>• <b>Commissioni di performance</b> (o di incentivo): le chiedono alcuni fondi attivi se il fondo guadagna più di un obiettivo prefissato. Anche queste gravano sul patrimonio del fondo. <i>Per ora non le calcoliamo.</i><br>• <b>Commissioni di entrata e di uscita</b>: non sono a carico del fondo ma di chi compra o vende le quote, e vengono tolte direttamente dalla somma che investi o che incassi. Sono un costo reale. <i>Per ora non le calcoliamo: le aggiungeremo in futuro, quando avremo un archivio dei fondi con i loro costi.</i><br>• <b>Commissioni di negoziazione</b>: le paghi alla banca o al broker quando compri o vendi un ETF in borsa, di solito una cifra fissa a operazione che dipende dalla banca e dal piano scelto. <i>Per ora non le calcoliamo.</i></p><p><b>Anche le banche con filiali.</b> Alcune permettono di comprare in autonomia ETF e fondi passivi dall'app o dal sito, senza passare da un fondo gestito. Ma investire ha comunque dei costi di negoziazione: per esempio, secondo le condizioni pubblicate da InvestoPro (gruppo Intesa Sanpaolo), nell'offerta Go un ordine su ETF o azioni di Borsa Italiana costa 4,90 €, mentre nelle condizioni standard costa 12 € (9 € per i clienti della banca).</p><p><b>Dove trovarli.</b> Prima di comprare, i costi stimati sono nel KID, il documento informativo che ogni fondo deve mettere a disposizione. Dopo, la banca ti manda ogni anno il rendiconto su costi e oneri con quelli effettivamente pagati.`,s:['bdinv','bdi','consob','esma','invgo','invcond']}
+ gest:{q:'Cosa sono le commissioni di gestione?',t:`Quando metti i soldi in un fondo, chi lo gestisce si fa pagare ogni anno una piccola percentuale di quello che hai investito. Nessuno ti manda un conto da pagare: la percentuale viene tolta direttamente dal valore del tuo investimento, ed è per questo che non la vedi sull'estratto conto. <b>Esempio:</b> con una commissione del 2% l'anno, su 1.000 € ne paghi 20 ogni anno.</p><p><b>Ci sono due tipi di fondi.</b> Nel <b>fondo attivo</b> un gestore sceglie dove investire e cerca di fare meglio del mercato: costa di più. Nel <b>fondo passivo</b> (detto anche indicizzato) non si sceglie niente: si copia un indice, cioè un elenco di aziende, e costa molto meno. L'<b>ETF</b> è un tipo di fondo passivo che si compra e si vende in borsa come un'azione.</p><p><b>Cosa calcola Quantifee.</b> Le commissioni di gestione di ogni investimento che trova nei tuoi file, stimate con una percentuale tipica: <b>fondi attivi (2% l'anno)</b> per Intesa Sanpaolo, UniCredit e le altre banche con filiali, <b>ETF passivi (0,3% l'anno)</b> per Trade Republic e Revolut. Poi le confronta con quanto avresti pagato con un ETF passivo. Parliamo di soli costi: il rendimento dell'investimento non entra nel calcolo. È una <b>stima sul capitale versato</b> (al costo), non sul valore di mercato: il costo parte dal giorno di ogni acquisto e si ferma quando vendi. Se hai inserito l'investito attuale, ricaviamo anche quanto avevi già investito all'inizio del periodo. I costi effettivi sono nel rendiconto annuale della banca.</p><p><b>Cosa non calcoliamo, per ora:</b><br>• <b>Commissioni di performance</b>: le chiedono alcuni fondi attivi se battono un obiettivo prefissato.<br>• <b>Commissioni di entrata e di uscita</b>: tolte dalla somma che investi o che incassi.<br>• <b>Commissioni di negoziazione</b>: le paghi alla banca o al broker a ogni acquisto o vendita in borsa.</p><p><b>Anche le banche con filiali.</b> Alcune permettono di comprare in autonomia ETF e fondi passivi dall'app o dal sito. Ma investire ha comunque costi di negoziazione molto alti rispetto ai concorrenti: ad esempio un ordine su ETF costa 12 € con InvestoPro (gruppo Intesa Sanpaolo), 9 € per i clienti Intesa e 4,90 € nell'offerta Go, contro 1 € su Trade Republic.</p><p><b>Dove trovarli.</b> Prima di comprare, i costi stimati sono nel KID, il documento informativo che ogni fondo deve mettere a disposizione. Dopo, la banca ti manda ogni anno il rendiconto su costi e oneri con quelli effettivamente pagati.`,s:['bdinv','bdi','consob','invgo','invcond','trord']}
 }
 function moreHTML(k){const m=MORE[k];return `<details class="q-more"><summary>${m.q}</summary><div><p>${m.t}</p><div class="q-src">Fonti ufficiali${srcList(m.s)}</div></div></details>`}
 const CHAPS=[{id:'liq',t:'Interessi non percepiti',t0:429.0},{id:'sb',t:'Cashback/saveback non ottenuto',t0:484.2},{id:'gest',t:'Commissioni di gestione',t0:519.4}]
@@ -2888,10 +2891,16 @@ function setSimMode(m){
   document.querySelectorAll('.q-mode').forEach(b=>{const on=b.dataset.m===m;b.classList.toggle('on',on);b.setAttribute('aria-pressed',on)})
   renderSimulation()
 }
-function setSimReturn(r){document.getElementById('sim-return').value=r;renderSimulation()}
+const EQ_R=9.3,BOND_R=1.8
+function eqReturn(e){return Math.round((e/100*EQ_R+(1-e/100)*BOND_R)*100)/100}
+function setSimEq(e){document.getElementById('sim-eq').value=e;onSimEq()}
+function onSimEq(){
+  let e=parseFloat(document.getElementById('sim-eq').value);if(!isFinite(e))e=60;e=Math.max(0,Math.min(100,e))
+  document.getElementById('sim-return').value=eqReturn(e);renderSimulation()
+}
 function simChips(){
   const v=parseFloat(document.getElementById('sim-return').value)
-  document.querySelectorAll('.q-chip').forEach(c=>{const on=Math.abs(parseFloat(c.dataset.r)-v)<1e-9;c.classList.toggle('on',on);c.setAttribute('aria-pressed',on)})
+  document.querySelectorAll('.q-chip').forEach(c=>{const on=Math.abs(eqReturn(parseFloat(c.dataset.e))-v)<1e-9;c.classList.toggle('on',on);c.setAttribute('aria-pressed',on)})
 }
 function pacCallout(){
   const el=document.getElementById('sim-margin');if(!el)return
@@ -3736,24 +3745,35 @@ function oppLiqItem(d){
 // ── investimenti: costi su tutte le banche contro la combinazione più economica ──
 function invTipo(b){const bk=TARIFFE.banche[b];return (bk&&bk.investimenti_tipo)||'passivo'}
 function invBuys(d,b){return d.live.filter(t=>t.source===b&&t.amount<0&&t.catType==='investment'&&!t.isInternal&&t.date instanceof Date).sort((x,y)=>x.date-y.date)}
+function invFlows(d,b){return d.live.filter(t=>t.source===b&&!t.isInternal&&(t.catType==='investment'||t.catType==='disinvestment')&&t.date instanceof Date).map(t=>({date:t.date,flow:-t.amount})).sort((x,y)=>x.date-y.date)}
+// base su cui si calcola il costo: investito all'inizio del periodo (ricavato dal saldo inserito, a ritroso con i movimenti) + acquisti - vendite
+function invBase0(d,b){
+  const iIn=(typeof wealthInvestStart!=='undefined')?wealthInvestStart[b]:null
+  if(iIn==null)return 0
+  const after=allTx.filter(t=>t.source===b&&!t.isInternal&&(t.catType==='investment'||t.catType==='disinvestment')&&t.date instanceof Date&&t.date>=d.periodFrom).reduce((q,t)=>q-t.amount,0)
+  return Math.max(0,iIn-after)
+}
 function oppInv(d){
-  const{periodTo}=d,terA=getParam('terFondi'),terP=getParam('terETF'),rows=[]
+  const{periodFrom,periodTo}=d,terA=getParam('terFondi'),terP=getParam('terETF'),rows=[]
   loadedBanks().forEach(b=>{
-    const P=invBuys(d,b);if(!P.length)return
+    const P=invBuys(d,b),F=invFlows(d,b),I0=invBase0(d,b);if(!P.length&&I0<=0)return
     const type=invTipo(b),tot=P.reduce((q,t)=>q+Math.abs(t.amount),0)
-    const cost=ter=>P.reduce((q,t)=>q+Math.abs(t.amount)*ter/100*Math.max(0,(periodTo-t.date)/864e5)/365.25,0)
+    const cost=ter=>{let base=I0,prev=periodFrom,c=0
+      F.forEach(e=>{if(e.date>periodTo)return;c+=base*ter/100*Math.max(0,(e.date-prev)/864e5)/365.25;base=Math.max(0,base+e.flow);prev=e.date})
+      return c+base*ter/100*Math.max(0,(periodTo-prev)/864e5)/365.25}
     const actual=cost(type==='attivo'?terA:terP),best=cost(terP)
-    rows.push({b,type,tot,n:P.length,actual,best,missed:Math.max(0,actual-best)})
+    rows.push({b,type,tot,n:P.length,i0:I0,actual,best,missed:Math.max(0,actual-best)})
   })
   if(!rows.length)return null
   return{rows,total:rows.reduce((q,r)=>q+r.missed,0),terA,terP}
 }
+function invWhat(r){return r.n>0?(r.i0>0?`avevi già investito <b>${fmt(r.i0)}</b> prima del periodo e hai investito altri <b>${fmt(r.tot)}</b> in ${r.n} ${plu(r.n,'acquisto','acquisti')}`:`hai investito <b>${fmt(r.tot)}</b> in ${r.n} ${plu(r.n,'acquisto','acquisti')}`):`avevi già investito <b>${fmt(r.i0)}</b> prima del periodo`}
 function oppInvItem(d){
   const o=oppInv(d);if(!o||o.total<0.5)return null
   const r=o.rows.slice().sort((a,b)=>b.missed-a.missed)[0],pc=n=>String(n).replace('.',',')
   const altre=o.rows.filter(x=>x!==r&&x.missed>0.5).length
   return{k:'gest',title:'Commissioni di gestione degli investimenti',amt:o.total,more:moreHTML('gest'),
-    d:`Su <b>${esc(bankName(r.b))}</b> hai investito <b>${fmt(r.tot)}</b> in ${r.n} ${plu(r.n,'acquisto','acquisti')}, che consideriamo fondi a gestione attiva (costi ricorrenti stimati al ${pc(o.terA)}% l'anno). Un ETF passivo costerebbe circa ${pc(o.terP)}%. Contando ogni versamento dal giorno dell'acquisto fino all'ultimo movimento caricato, la differenza evitabile nel periodo è di <b>${fmt(r.missed,0)}</b>${altre?`; ${altre===1?'un\'altra banca lascia':altre+' altre banche lasciano'} qualcosa`:''}. Dettaglio in <a href="#liq-cmp">banca per banca</a>.`}
+    d:`Su <b>${esc(bankName(r.b))}</b> ${invWhat(r)}, che consideriamo fondi a gestione attiva (costi ricorrenti stimati al ${pc(o.terA)}% l'anno). Un ETF passivo costerebbe circa ${pc(o.terP)}%. Contando ogni versamento dal giorno dell'acquisto e togliendo le vendite dal giorno in cui le hai fatte, fino all'ultimo movimento caricato, la differenza evitabile nel periodo è di <b>${fmt(r.missed,0)}</b>${altre?`; ${altre===1?'un\'altra banca lascia':altre+' altre banche lasciano'} qualcosa`:''}. Dettaglio in <a href="#liq-cmp">banca per banca</a>.`}
 }
 function etfCompareTxt(){
   const e=b=>{const p=TARIFFE.banche[b]&&Object.values(TARIFFE.banche[b].piani).find(x=>x.etf);return p&&p.etf}
@@ -3833,7 +3853,7 @@ function renderLiqCompare(d){
     const pc=n=>String(n).replace('.',',')
     hv+=`<div class="sec-label" style="margin:1rem 0 .4rem">Commissioni di gestione degli investimenti</div>
     <div class="q-table-wrap"><table class="q-table"><thead><tr><th>Banca</th><th>Investito</th><th>Tipo considerato</th><th>Costi di gestione attuali</th><th>Costi di gestione con ETF passivo</th><th>Costi evitabili</th></tr></thead><tbody>${
-      iv.rows.map(r=>`<tr><td><b>${esc(bankName(r.b))}</b></td><td>${fmt(r.tot)}<br><small class="oc">${r.n} ${plu(r.n,'acquisto','acquisti')}</small></td><td>${r.type==='attivo'?'Fondi attivi':'ETF passivi'}<br><small class="oc">${pc(r.type==='attivo'?iv.terA:iv.terP)}% l'anno</small></td><td>${fmt(r.actual,2)}</td><td>${fmt(r.best,2)}<br><small class="oc">${pc(iv.terP)}% l'anno</small></td><td><b>${fmt(r.missed,2)}</b></td></tr>`).join('')}
+      iv.rows.map(r=>`<tr><td><b>${esc(bankName(r.b))}</b></td><td>${fmt(r.tot+r.i0)}<br><small class="oc">${r.n?r.n+' '+plu(r.n,'acquisto','acquisti'):''}${r.n&&r.i0>0?' + ':''}${r.i0>0?fmt(r.i0)+' già investiti prima':''}</small></td><td>${r.type==='attivo'?'Fondi attivi':'ETF passivi'}<br><small class="oc">${pc(r.type==='attivo'?iv.terA:iv.terP)}% l'anno</small></td><td>${fmt(r.actual,2)}</td><td>${fmt(r.best,2)}<br><small class="oc">${pc(iv.terP)}% l'anno</small></td><td><b>${fmt(r.missed,2)}</b></td></tr>`).join('')}
       <tr><td colspan="5"><b>Totale nel periodo</b></td><td><b>${fmt(iv.total,2)}</b></td></tr></tbody></table></div>
     <p class="q-note"><b>Intesa Sanpaolo e UniCredit</b>: fondi a gestione attiva, costi ricorrenti stimati al <b>${pc(iv.terA)}% l'anno</b>. <b>Trade Republic</b>: ETF passivi, <b>${pc(iv.terP)}%</b>, usato come riferimento. <b>Revolut</b> offre ETF ma non è sostituto d'imposta: non è mai proposto come alternativa. Le percentuali sono medie ESMA riportate da Banca d'Italia, modificabili nei parametri, e valgono per ogni versamento dal giorno dell'acquisto all'ultimo movimento caricato.</p>
     <p class="q-note"><b>Anche le banche tradizionali offrono ETF e piani di investimento in ETF, ma per ora non li consideriamo:</b> ${etfCompareTxt()}</p>`
