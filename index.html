@@ -684,6 +684,11 @@ details.q-det>div{padding:0 1.2rem 1.1rem}
 .chip-sel option{color:#0E1B26;background:#fff}
 .oc{display:inline-block;max-width:14rem;white-space:normal;text-align:right;color:var(--ink-ter)}
 .chip-hint{font-size:12px;color:rgba(255,255,255,.55);margin:.2rem 0 .6rem;line-height:1.5}
+.q-tx-more{display:flex;gap:.6rem;flex-wrap:wrap;margin:.8rem 0 0}
+.q-tx-top{margin:0 0 .8rem}
+.q-tx-more:empty{display:none}
+.q-btn-l{background:transparent}
+.q-gtoggle{margin:0 0 1rem}
 </style>
 </head>
 <body>
@@ -879,6 +884,7 @@ details.q-det>div{padding:0 1.2rem 1.1rem}
       <h2>Grafici</h2>
       <p class="q-lead">Gli stessi numeri della tabella, nel tempo. Seguono il periodo scelto in "Mese per mese".</p>
       <div class="q-kpis" id="invest-note" style="display:none"></div>
+      <button type="button" class="q-btn q-gtoggle" id="graf-btn" aria-pressed="false" onclick="toggleBars()">Mostra le barre mensili</button>
       <div class="q-charts">
         <div class="q-chart">
           <h3>Come cambia la liquidità</h3>
@@ -2029,8 +2035,20 @@ function renderCharts(){
     const rects=layoutTreemap(items,PAD,PAD,TW-PAD*2,TH-PAD*2)
     const svgContent=rects.map((r,i)=>{
       const rw=Math.max(r.w-PAD,0),rh=Math.max(r.h-PAD,0)
-      const showName=rw>55&&rh>24
-      const showAmt=rw>65&&rh>42
+      const nm=String(r.name),area=Math.sqrt(rw*rh)
+      let fs=Math.max(13,Math.min(30,area*0.13))
+      fs=Math.min(fs,(rw-14)/(Math.max(nm.length,3)*0.58))
+      let showName=rw>40&&rh>fs*1.5,label=nm
+      let lines=[nm]
+      if(fs<12){fs=12;const mx=Math.floor((rw-12)/(12*0.5))
+        if(mx<4)showName=false
+        else if(nm.length>mx){
+          const w=nm.split(' ');let a='',bb='';w.forEach((x,k)=>{if((a+' '+x).trim().length<=Math.max(mx,w[0].length)&&!bb)a=(a+' '+x).trim();else bb=(bb+' '+x).trim()})
+          lines=bb?[a,bb]:[a]
+          lines=lines.map(x=>x.length>mx?x.slice(0,mx-1)+'…':x)
+          if(lines.length>1&&rh<fs*2.6+4)lines=[lines[0]]
+        }}
+      const amtT='€'+Math.round(r.value).toLocaleString('it-IT')+' · '+Math.round(r.value/totalExp*100)+'%',fa=Math.min(Math.max(11,fs*0.82),(rw-12)/(amtT.length*0.56)),nl=lines.length,showAmt=showName&&fa>=10&&rh>fs*nl+fa*2.1
       const pct=Math.round(r.value/totalExp*100)
       // Text color: white for dark bg, dark for light bg
       const tc='rgba(255,255,255,0.92)'
@@ -2038,8 +2056,8 @@ function renderCharts(){
       return`<g>
         <rect x="${r.x}" y="${r.y}" width="${rw}" height="${rh}" fill="${r.color}" rx="3"/>
         <clipPath id="cp${i}"><rect x="${r.x+2}" y="${r.y+2}" width="${Math.max(rw-4,0)}" height="${Math.max(rh-4,0)}"/></clipPath>
-        ${showName?`<text clip-path="url(#cp${i})" x="${r.x+6}" y="${r.y+16}" font-size="11" fill="${tc}" font-family="-apple-system,sans-serif" font-weight="500">${esc(r.name)}</text>`:''}
-        ${showAmt?`<text clip-path="url(#cp${i})" x="${r.x+6}" y="${r.y+30}" font-size="10" fill="${tc2}" font-family="-apple-system,sans-serif">€${Math.round(r.value).toLocaleString('it-IT')} · ${pct}%</text>`:''}
+        ${showName?`<text clip-path="url(#cp${i})" x="${r.x+6}" y="${r.y+fs+5}" font-size="${fs.toFixed(1)}" fill="${tc}" font-family="-apple-system,sans-serif" font-weight="600">${lines.map((l,k)=>`<tspan x="${r.x+6}" dy="${k?fs*1.1:0}">${esc(l)}</tspan>`).join('')}</text>`:''}
+        ${showAmt?`<text clip-path="url(#cp${i})" x="${r.x+6}" y="${r.y+fs*nl*1.1+fa+8}" font-size="${fa.toFixed(1)}" fill="${tc}" font-family="-apple-system,sans-serif">€${Math.round(r.value).toLocaleString('it-IT')} · ${pct}%</text>`:''}
         <title>${esc(r.name)}: €${Math.round(r.value).toLocaleString('it-IT')} (${pct}%)${r.name==='Altre voci'?'. Contiene: '+otherCats.map(([n,x])=>n+' €'+Math.round(x).toLocaleString('it-IT')).join(', '):''}</title>
       </g>`}).join('')
     document.getElementById('waffle-wrap').innerHTML=
@@ -2279,6 +2297,28 @@ function txSetSort(k){
   renderTxTable(activeFilter)
 }
 function txToggleCat(l){catFilter.has(l)?catFilter.delete(l):catFilter.add(l);renderTxTable(activeFilter)}
+window._showBars=false
+function applyBars(){
+  const on=window._showBars
+  ;[typeof wf2Chart!=='undefined'?wf2Chart:null,typeof invChart!=='undefined'?invChart:null].forEach(ch=>{
+    if(!ch)return
+    ch.data.datasets.forEach((d,i)=>{if(d.type!=='line')ch.setDatasetVisibility(i,on)})
+    const ln=ch.data.datasets.find(d=>d.type==='line')
+    if(ch.options.scales.y&&ln&&ln.yAxisID==='y1')ch.options.scales.y.display=on
+    ch.options.plugins.legend.labels.filter=(it,dt)=>dt.datasets[it.datasetIndex].type==='line'||window._showBars
+    ch.update('none')
+  })
+  const a=document.getElementById('liq-desc'),b=document.getElementById('inv-desc')
+  if(!on){
+    if(a)a.textContent=a.textContent.replace(' Le barre sono la variazione del mese.','')
+    if(b)b.textContent=b.textContent.replace('Barre in su: acquisti. Barre in giù: riscatti e vendite. ','')
+  }
+  const btn=document.getElementById('graf-btn');if(btn){btn.setAttribute('aria-pressed',String(on));btn.textContent=on?'Nascondi le barre mensili':'Mostra le barre mensili'}
+}
+function toggleBars(){window._showBars=!window._showBars;try{renderCharts()}catch(e){applyBars()}}
+const _rcBars=renderCharts;renderCharts=function(){const x=_rcBars.apply(this,arguments);applyBars();return x}
+function txMore(n){window._txShown=(window._txShown||20)+n;renderTxTable(activeFilter)}
+function txLess(){window._txShown=20;renderTxTable(activeFilter);const t=document.getElementById('tx-count');if(t)t.scrollIntoView({block:'start',behavior:'smooth'})}
 function txClearCat(){catFilter.clear();renderTxTable(activeFilter)}
 function txResetView(){catFilter=new Set();txSort={key:null,dir:'asc'}}
 function txEnsureUI(rowsBeforeCat){
@@ -2364,9 +2404,20 @@ function renderTxTable(filter){
   }
   const idxMap=rows.map(r=>allTx.indexOf(r))
   const totRows=rows.length
-  rows=rows.slice(0,200)
+  const _sig=JSON.stringify([activeFilter,activeBankFilter,[...catFilter],txSort,activeMonthFilter,filterMonths,String(customFrom),String(customTo)])
+  if(_sig!==window._txSig){window._txSig=_sig;window._txShown=20}
+  rows=rows.slice(0,window._txShown)
   const cnt=document.getElementById('tx-count')
-  if(cnt)cnt.textContent=totRows>200?`Mostro 200 movimenti su ${totRows}. Usa i filtri per restringere.`:`${totRows} moviment${totRows===1?'o':'i'}`
+  if(cnt)cnt.textContent=totRows>rows.length?`Mostro ${rows.length} movimenti su ${totRows}`:`${totRows} moviment${totRows===1?'o':'i'}`
+  const left=totRows-rows.length,shown=rows.length
+  const ctl=(left>0?`<button type="button" class="q-btn" onclick="txMore(20)">Mostra altri ${Math.min(20,left)}</button>`:'')+(left>20?` <button type="button" class="q-btn q-btn-l" onclick="txMore(1e9)">Mostra tutti (${totRows})</button>`:'')+(shown>20?` <button type="button" class="q-btn q-btn-l" onclick="txLess()">Mostra solo i primi 20</button>`:'')
+  let mb=document.getElementById('tx-more')
+  if(!mb){mb=document.createElement('div');mb.id='tx-more';mb.className='q-tx-more';document.querySelector('.q-tx-wrap').insertAdjacentElement('afterend',mb)}
+  mb.innerHTML=ctl
+  let mt=document.getElementById('tx-more-top')
+  if(!mt){mt=document.createElement('div');mt.id='tx-more-top';mt.className='q-tx-more q-tx-top';document.querySelector('.q-tx-wrap').insertAdjacentElement('beforebegin',mt)}
+  mt.innerHTML=ctl
+
   document.getElementById('tx-body').innerHTML=rows.map((t,i)=>{
     const txIdx=idxMap[i],editable=!t.isInternal
     const catHtml=editable
