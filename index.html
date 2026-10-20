@@ -684,6 +684,24 @@ details.q-det>div{padding:0 1.2rem 1.1rem}
 .chip-sel option{color:#0E1B26;background:#fff}
 .oc{display:inline-block;max-width:14rem;white-space:normal;text-align:right;color:var(--ink-ter)}
 .chip-hint{font-size:12px;color:rgba(255,255,255,.55);margin:.2rem 0 .6rem;line-height:1.5}
+.q-gen{position:fixed;inset:0;z-index:9999;background:rgba(14,27,38,.62);display:flex;align-items:flex-start;justify-content:center;padding:4vh 1rem;overflow:auto}
+.q-gen-card{background:#fff;color:var(--ink);border-radius:16px;max-width:640px;width:100%;padding:1.3rem 1.4rem 1.2rem;box-shadow:0 20px 60px rgba(0,0,0,.35)}
+.q-gen-card h3{margin:0 0 .5rem;font-size:20px}
+.q-gen-p{font-size:14px;line-height:1.5;color:var(--ink-sec);margin:.4rem 0}
+.q-gen-err{font-size:14px;font-weight:600;color:var(--red);margin:.6rem 0}
+.q-gen-note{font-size:14px;font-weight:600;margin:.8rem 0 .4rem}
+.q-gen-form{display:grid;grid-template-columns:1fr 1fr;gap:.6rem .9rem;margin:.9rem 0}
+.q-gen-form label{display:flex;flex-direction:column;gap:.2rem;font-size:13px;font-weight:600;color:var(--ink-sec)}
+.q-gen-form select,.q-gen-form input{font:inherit;font-size:15px;padding:.45rem .5rem;border:1px solid var(--border-s);border-radius:8px;color:var(--ink);background:#fff}
+.q-gen-form input{grid-column:1/-1}
+.q-gen-tab{width:100%;border-collapse:collapse;font-size:13px}
+.q-gen-tab th{text-align:left;color:var(--ink-sec);border-bottom:1px solid var(--border);padding:.3rem .4rem}
+.q-gen-tab td{padding:.3rem .4rem;border-bottom:1px solid var(--border);word-break:break-word}
+.q-gen-tab .neg{color:var(--red);text-align:right;white-space:nowrap}.q-gen-tab .pos{color:var(--teal);text-align:right;white-space:nowrap}
+.q-gen-btns{display:flex;gap:.6rem;flex-wrap:wrap;margin-top:1rem}
+.q-btn-p{background:var(--teal);color:#fff;border-color:var(--teal)}
+.q-btn:disabled{opacity:.45;cursor:not-allowed}
+@media(max-width:560px){.q-gen-form{grid-template-columns:1fr}}
 .q-tx-more{display:flex;gap:.6rem;flex-wrap:wrap;margin:.8rem 0 0}
 .q-tx-top{margin:0 0 .8rem}
 .q-tx-more:empty{display:none}
@@ -701,7 +719,7 @@ details.q-det>div{padding:0 1.2rem 1.1rem}
     <div class="drop-title">Carica il registro dei movimenti</div>
     <div class="drop-sub">Commissioni, spese e confronto tra banche.<br>Intesa Sanpaolo · Trade Republic · Revolut · UniCredit</div>
     <label class="drop-btn" for="file-input">Scegli file</label>
-    <div class="drop-supported">Supportati: .xlsx · .xls · .csv — puoi caricare più file insieme<br><strong style="color:var(--teal-m)">Esporta i movimenti fino a oggi</strong>: così il saldo che inserirai dopo sarà quello di oggi.</div>
+    <div class="drop-supported">Supportati: .xlsx · .xls · .csv — puoi caricare più file insieme<br>Intesa Sanpaolo, Trade Republic, Revolut e UniCredit si leggono con precisione; per le altre banche c'è una lettura guidata, da confermare.<br><strong style="color:var(--teal-m)">Esporta i movimenti fino a oggi</strong>: così il saldo che inserirai dopo sarà quello di oggi.</div>
   </div>
   <input type="file" id="file-input" accept=".xlsx,.xls,.csv" multiple>
   <div class="files-added" id="files-added"></div>
@@ -1191,15 +1209,15 @@ function detectFormat(rows){
   if(h0.includes('type')&&h0.includes('amount')&&(h0.includes('fee')||h0.includes('symbol')))return'tr'
   if(h0.some(c=>c.includes('data di inizio')||c.includes('data di completamento')))return'revolut'
   if(h0.some(c=>c.includes('started date')||c.includes('paid out')||c.includes('paid in')))return'revolut'
-  for(let i=0;i<5;i++){if((rows[i]||[]).join(' ').toLowerCase().includes('revolut'))return'revolut'}
+  for(let i=0;i<5;i++){const rr=(rows[i]||[]).filter(c=>c!=null&&c!=='');if(rr.length<=3&&rr.join(' ').toLowerCase().includes('revolut'))return'revolut'}
   for(let i=0;i<25;i++){
-    const txt=(rows[i]||[]).join(' ').toLowerCase()
+    const txt=(rows[i]||[]).join(' ').toLowerCase(),sparse=(rows[i]||[]).filter(c=>c!=null&&c!=='').length<=3
     // Intesa: unique phrases in metadata rows or column headers
     if(txt.includes('movimenti selezionati sono')||txt.includes('conto o carta')||
        txt.includes('data inizio periodo')||txt.includes('elenco movimenti')||
-       txt.includes('intesa')||txt.includes('superflash'))return'intesa'
+       (sparse&&txt.includes('intesa'))||txt.includes('superflash'))return'intesa'
     // UniCredit: specific Italian column headers
-    if(txt.includes('unicredit')||txt.includes('data contabile')||(txt.includes('causale')&&txt.includes('importo')))return'unicredit'
+    if((sparse&&txt.includes('unicredit'))||txt.includes('data contabile'))return'unicredit'
   }
   return'unknown'
 }
@@ -2317,6 +2335,318 @@ function applyBars(){
 }
 function toggleBars(){window._showBars=!window._showBars;try{renderCharts()}catch(e){applyBars()}}
 const _rcBars=renderCharts;renderCharts=function(){const x=_rcBars.apply(this,arguments);applyBars();return x}
+// ─── LETTORE GENERICO: per i file di banche che non conosciamo ─────────────
+// Gira solo nel browser, dopo i quattro lettori noti. Cerca intestazioni con sotto dei dati,
+// propone una lettura e la fa confermare all'utente. Non usa mai il testo del file come HTML
+// né come nome di proprietà di un oggetto.
+const GEN_MAX_ROWS=100000, GEN_MAX_COLS=60, GEN_MAX_CELL=300
+const GEN_BANKS=['Altra banca','Buddybank','Fineco','N26','Hype','Mediolanum','Widiba','Banca Sella','BPER','Banco BPM','Monte dei Paschi','BancoPosta','ING','illimity','Satispay','PayPal']
+const GEN_SYN={
+  date:[['data operazione',9],['data contabile',9],['booking date',9],['transaction date',9],['data registrazione',8],['completed date',8],['data di completamento',8],['started date',6],['data valuta',4],['value date',4],['data',5],['date',5],['giorno',3]],
+  desc:[['descrizione completa',9],['descrizione',9],['causale',8],['dettagli',8],['details',8],['description',9],['payment reference',8],['partner name',7],['beneficiario',6],['controparte',6],['payee',6],['narrative',6],['memo',5],['note',3],['operazione',2]],
+  amt:[['importo',9],['amount',9],['ammontare',8],['valore',5],['value',3],['totale',3],['euro',2]],
+  debit:[['uscite',9],['uscita',9],['dare',9],['addebiti',8],['addebito',8],['debit',8],['paid out',8],['withdrawal',7],['pagamenti',5],['spese',5]],
+  credit:[['entrate',9],['entrata',9],['avere',9],['accrediti',8],['accredito',8],['credit',8],['paid in',8],['deposit',7],['incassi',5]]
+}
+const GEN_BAD=/saldo|balance|disponibil|available|progressiv|running/
+const GEN_MONTHS={gen:1,feb:2,mar:3,apr:4,mag:5,giu:6,lug:7,ago:8,set:9,ott:10,nov:11,dic:12,jan:1,may:5,jun:6,jul:7,aug:8,sep:9,oct:10,dec:12}
+
+function genCell(v){
+  if(v==null)return''
+  if(v instanceof Date)return isNaN(v)?'':v
+  if(typeof v==='number')return isFinite(v)?v:''
+  return String(v).replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f‎‏‪-‮⁦-⁩]/g,'').slice(0,GEN_MAX_CELL).trim()
+}
+function genText(v){const c=genCell(v);return c instanceof Date?'':String(c)}
+
+function genParseAmount(v,dec){
+  if(typeof v==='number')return isFinite(v)?v:NaN
+  if(v instanceof Date||v==null)return NaN
+  let s=String(v).trim().replace(/ |\s/g,'').replace(/[−–—]/g,'-')
+  s=s.replace(/€|eur$|^eur|euro/ig,'')
+  if(!s)return NaN
+  let neg=false
+  if(/^\(.*\)$/.test(s)){neg=true;s=s.slice(1,-1)}
+  if(/-$/.test(s)){neg=true;s=s.slice(0,-1)}
+  if(/^-/.test(s)){neg=!neg;s=s.slice(1)}
+  if(/^\+/.test(s))s=s.slice(1)
+  if(!/^[0-9.,]+$/.test(s)||!/[0-9]/.test(s))return NaN
+  const lc=s.lastIndexOf(','),ld=s.lastIndexOf('.')
+  if(dec==='comma'){ // scelta dell'utente: la virgola è il decimale, il punto separa le migliaia
+    if((s.match(/,/g)||[]).length>1)return NaN
+    s=s.replace(/\./g,'').replace(',','.')
+  }else if(dec==='dot'){ // scelta dell'utente: il punto è il decimale, la virgola separa le migliaia
+    if((s.match(/\./g)||[]).length>1)return NaN
+    s=s.replace(/,/g,'')
+  }else if(lc>=0&&ld>=0){ // l'ultimo dei due separatori è quello dei decimali
+    if(lc>ld)s=s.replace(/\./g,'').replace(',','.');else s=s.replace(/,/g,'')
+  }else if(lc>=0){
+    if((s.match(/,/g)||[]).length>1||/,\d{3}$/.test(s)&&/^\d{1,3}(,\d{3})+$/.test(s))s=s.replace(/,/g,'');else s=s.replace(',','.')
+  }else if(ld>=0){
+    if((s.match(/\./g)||[]).length>1||/^\d{1,3}(\.\d{3})+$/.test(s))s=s.replace(/\./g,'')
+  }
+  const n=parseFloat(s)
+  return isFinite(n)?(neg?-n:n):NaN
+}
+
+function genOkDate(d){return d instanceof Date&&!isNaN(d)&&d.getFullYear()>=1995&&d<=new Date(Date.now()+40*864e5)}
+function genParseDate(v,mode){
+  if(v instanceof Date)return genOkDate(v)?v:null
+  if(typeof v==='number'){ // data seriale di Excel
+    if(v>=30000&&v<=70000){const d=new Date(Math.round((v-25569)*864e5));const x=new Date(d.getUTCFullYear(),d.getUTCMonth(),d.getUTCDate());return genOkDate(x)?x:null}
+    return null
+  }
+  const s=String(v==null?'':v).trim().toLowerCase()
+  if(!s)return null
+  let m=s.match(/^(\d{4})[\/\-.](\d{1,2})[\/\-.](\d{1,2})(?:\D|$)/)
+  let y,mo,d
+  if(m){y=+m[1];mo=+m[2];d=+m[3]}
+  else if((m=s.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2}|\d{4})(?:\D|$)/))){
+    const a=+m[1],b=+m[2];y=+m[3];if(y<100)y+=2000
+    if(mode==='mdy'){mo=a;d=b}else{d=a;mo=b}
+  }else if((m=s.match(/^(\d{1,2})\s+([a-zà]{3,9})\.?,?\s+(\d{4})/))){
+    d=+m[1];mo=GEN_MONTHS[m[2].slice(0,3)];y=+m[3]
+  }else return null
+  if(!mo||mo<1||mo>12||d<1||d>31)return null
+  const x=new Date(y,mo-1,d)
+  if(x.getMonth()!==mo-1)return null
+  return genOkDate(x)?x:null
+}
+// 'dmy' certo, 'mdy' certo o 'amb' se non si può capire dai dati
+function genDateMode(vals){
+  let dmy=false,mdy=false
+  for(const v of vals){
+    if(typeof v!=='string')continue
+    const m=v.trim().match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2}|\d{4})(?:\D|$)/)
+    if(!m)continue
+    if(+m[1]>12)dmy=true
+    if(+m[2]>12)mdy=true
+  }
+  return dmy&&!mdy?'dmy':mdy&&!dmy?'mdy':(dmy&&mdy?'misto':'amb')
+}
+
+function genScore(h,list){
+  let best=0
+  for(const [k,p] of list)if(h===k)best=Math.max(best,p+1);else if(h.includes(k))best=Math.max(best,p)
+  return best
+}
+
+// Cerca la riga di intestazione e propone le colonne. Non lancia errori: restituisce {ok:false,reason}.
+function genAnalyze(rows){
+  if(!Array.isArray(rows)||rows.length<2)return{ok:false,reason:'Il file è vuoto o ha una sola riga.'}
+  if(rows.length>GEN_MAX_ROWS)return{ok:false,reason:`Il file ha più di ${GEN_MAX_ROWS.toLocaleString('it-IT')} righe: è troppo grande per essere letto qui.`}
+  const R=rows.map(r=>Array.isArray(r)?r.slice(0,GEN_MAX_COLS).map(genCell):[])
+  const nc=Math.min(GEN_MAX_COLS,R.reduce((m,r)=>Math.max(m,r.length),0))
+  if(nc<2)return{ok:false,reason:'Non vedo colonne di dati: il file sembra un testo e non una tabella.'}
+  // 1. riga di intestazione: quella dove si riconoscono più nomi di colonna, entro le prime 40
+  let hr=-1,hs=0
+  for(let i=0;i<Math.min(40,R.length);i++){
+    const hh=R[i].map(c=>genText(c).toLowerCase())
+    let s=0;const used=new Set()
+    for(const k of ['date','amt','debit','credit','desc']){
+      let b=0,bi=-1;hh.forEach((c,j)=>{if(!c||GEN_BAD.test(c)||c.length>60||used.has(j))return;const sc=genScore(c,GEN_SYN[k]);if(sc>b){b=sc;bi=j}})
+      if(bi>=0){used.add(bi);s+=(k==='date'||k==='amt'||k==='debit'||k==='credit')?2:1}
+    }
+    if(s>hs){hs=s;hr=i}
+  }
+  const hasHead=hs>=3
+  const start=hasHead?hr+1:0
+  const body=R.slice(start)
+  const names=[]
+  for(let j=0;j<nc;j++){const t=hasHead?genText(R[hr][j]):'';names.push(t||('Colonna '+(j+1)))}
+  const cols=[];for(let j=0;j<nc;j++)cols.push(body.map(r=>r[j]===undefined?'':r[j]))
+  // 2. statistiche per colonna: quante celle sembrano date, quante numeri, lunghezza media dei testi
+  const st=cols.map(c=>{
+    let n=0,dt=0,nm=0,len=0,neg=0,pos=0,txt=0
+    for(const v of c){
+      if(v===''||v==null)continue
+      n++
+      if(genParseDate(v,'dmy')||genParseDate(v,'mdy'))dt++
+      const a=genParseAmount(v)
+      if(!isNaN(a)){nm++;if(a<0)neg++;else if(a>0)pos++}
+      else{txt++;len+=String(v).length}
+    }
+    return{n,dt,nm,neg,pos,txt,avg:txt?len/txt:0}
+  })
+  const total=body.filter(r=>r.some(c=>c!==''&&c!=null)).length
+  if(total<3)return{ok:false,reason:'Ci sono meno di 3 righe di dati sotto le intestazioni.'}
+  const pick=(k,pred)=>{
+    let b=0,bi=-1
+    names.forEach((nm,j)=>{
+      const h=nm.toLowerCase();if(!hasHead||GEN_BAD.test(h))return
+      const sc=genScore(h,GEN_SYN[k]);if(sc>b&&(!pred||pred(st[j]))){b=sc;bi=j}
+    });return bi
+  }
+  let cDate=pick('date',s=>s.dt>=0.6*s.n&&s.n>0)
+  if(cDate<0){let b=0;st.forEach((s,j)=>{if(s.n&&s.dt/s.n>b&&s.dt/s.n>=0.8&&!(hasHead&&GEN_BAD.test(names[j].toLowerCase()))){b=s.dt/s.n;cDate=j}})}
+  let cAmt=pick('amt',s=>s.nm>=0.6*s.n&&s.n>0)
+  let cDeb=-1,cCre=-1
+  if(cAmt<0){cDeb=pick('debit',s=>s.nm>=0.3*s.n||s.n===0);cCre=pick('credit',s=>s.nm>=0.3*s.n||s.n===0);if(cDeb===cCre)cDeb=cCre=-1}
+  if(cAmt<0&&cDeb<0&&cCre<0){ // senza intestazioni chiare: la colonna numerica (non data) che ha importi sia positivi sia negativi
+    let b=-1;st.forEach((s,j)=>{if(j===cDate||!s.n||s.nm<0.8*s.n)return;if(hasHead&&GEN_BAD.test(names[j].toLowerCase()))return;const sc=(s.neg&&s.pos?2:0)+s.nm/s.n;if(sc>b){b=sc;cAmt=j}})
+  }
+  let cDesc=pick('desc',s=>s.txt>0)
+  if(cDesc<0||cDesc===cDate||cDesc===cAmt){let b=0;cDesc=-1;st.forEach((s,j)=>{if(j===cDate||j===cAmt||j===cDeb||j===cCre)return;if(s.avg>b){b=s.avg;cDesc=j}})}
+  const reason=[]
+  if(cDate<0)reason.push('non trovo una colonna con le date')
+  if(cAmt<0&&cDeb<0&&cCre<0)reason.push('non trovo una colonna con gli importi')
+  if(reason.length)return{ok:false,reason:'Non riesco a leggere questo file: '+reason.join(' e ')+'. Controlla che sia l\'elenco dei movimenti, con data e importo.'}
+  const mode=genDateMode(cols[cDate].filter(v=>typeof v==='string'))
+  return{ok:true,hasHead,hr,start,names,nc,cols:{date:cDate,desc:cDesc,amt:cAmt,debit:cDeb,credit:cCre},mode,rows:R,totalRows:total}
+}
+
+// Applica la scelta delle colonne e restituisce i movimenti, o null con il motivo.
+function genExtract(an,opt){
+  const o=Object.assign({dateMode:an.mode==='mdy'?'mdy':'dmy',flip:false,dec:'auto',source:'x_altra'},opt||{})
+  const {date,desc,amt,debit,credit}=an.cols
+  const txs=[];let tried=0,bad=0
+  for(let i=an.start;i<an.rows.length;i++){
+    const r=an.rows[i]
+    if(!r||!r.some(c=>c!==''&&c!=null))continue
+    tried++
+    const d=genParseDate(r[date],o.dateMode)
+    let a=NaN
+    if(amt>=0)a=genParseAmount(r[amt],o.dec)
+    else{
+      const dv=debit>=0?genParseAmount(r[debit],o.dec):NaN,cv=credit>=0?genParseAmount(r[credit],o.dec):NaN
+      const dd=isNaN(dv)?0:Math.abs(dv),cc=isNaN(cv)?0:Math.abs(cv)
+      a=(isNaN(dv)&&isNaN(cv))?NaN:cc-dd
+    }
+    if(!d||isNaN(a)){bad++;continue}
+    if(Math.abs(a)>1e9){bad++;continue}
+    if(a===0)continue
+    if(o.flip)a=-a
+    const det=(desc>=0?genText(r[desc]):'').replace(/\s+/g,' ').slice(0,160)
+    txs.push({date:d,op:'Altra banca',detail:det,cat:'',amount:Math.round(a*100)/100,fee:0,source:o.source,catType:a>0?'income':'expense'})
+  }
+  const okShare=tried?txs.length/tried:0
+  if(txs.length<3)return{ok:false,reason:'Con queste colonne riesco a leggere meno di 3 movimenti.',txs:[]}
+  if(okShare<0.8&&bad>0)return{ok:false,reason:`Con queste colonne non riesco a leggere il ${Math.round((1-okShare)*100)}% delle righe: controlla le colonne scelte.`,txs}
+  let mn=txs[0].date,mx=txs[0].date;txs.forEach(t=>{if(t.date<mn)mn=t.date;if(t.date>mx)mx=t.date})
+  if((mx-mn)/864e5>366*15)return{ok:false,reason:'Le date coprono più di 15 anni: probabilmente la colonna delle date è sbagliata.',txs}
+  const neg=txs.filter(t=>t.amount<0).length
+  return{ok:true,txs,neg,pos:txs.length-neg,bad,tried}
+}
+
+// Nome della banca scelto dall'utente: solo lettere, numeri, spazio, punto e trattino.
+function genBankLabel(s){
+  const t=String(s||'').normalize('NFKC').replace(/[^\p{L}\p{N} .\-]/gu,'').replace(/\s+/g,' ').trim().slice(0,24)
+  return t||'Altra banca'
+}
+function genBankKey(label){
+  const k=label.toLowerCase().normalize('NFKD').replace(/[^a-z0-9]/g,'').slice(0,20)
+  return 'x_'+(k||'altra')
+}
+const GEN_PALETTE=['#6B7785','#8A6D3B','#5C7A89','#7D6B91','#4F7A6B']
+function genRegister(label){
+  const key=genBankKey(label)
+  if(!BANKS[key]){const n=Object.keys(BANKS).filter(k=>k.startsWith('x_')).length
+    BANKS[key]=label;BANK_NAME[key]=label;BANK_COLORS[key]=GEN_PALETTE[n%GEN_PALETTE.length]}
+  return key
+}
+
+// ─── schermata di conferma (costruita solo con textContent: nessun HTML dal file) ───
+function genEl(tag,cls,text){const e=document.createElement(tag);if(cls)e.className=cls;if(text!=null)e.textContent=text;return e}
+function genFlow(file,rawRows){
+  return new Promise(resolve=>{
+    const an=genAnalyze(rawRows)
+    const wrap=genEl('div','q-gen');wrap.setAttribute('role','dialog');wrap.setAttribute('aria-modal','true');wrap.setAttribute('aria-label','Conferma come leggere il file')
+    const card=genEl('div','q-gen-card');wrap.appendChild(card)
+    const close=v=>{wrap.remove();document.body.style.overflow='';resolve(v)}
+    card.appendChild(genEl('h3',null,'Non conosco questa banca'))
+    card.appendChild(genEl('p','q-gen-p',`Nel file «${String(file.name).replace(/[^\p{L}\p{N} ._\-]/gu,'').slice(0,60)}» non riconosco il formato di nessuna delle banche supportate.`))
+    if(!an.ok){
+      card.appendChild(genEl('p','q-gen-err',an.reason))
+      card.appendChild(genEl('p','q-gen-p','Banche che leggo con precisione: Intesa Sanpaolo, Trade Republic, Revolut, UniCredit. Se il file è di un\'altra banca, serve un export con le colonne data e importo.'))
+      const b=genEl('button','q-btn','Chiudi');b.type='button';b.onclick=()=>close(null);card.appendChild(b)
+      document.body.appendChild(wrap);document.body.style.overflow='hidden';b.focus();return
+    }
+    card.appendChild(genEl('p','q-gen-p','Ho provato a leggerlo cercando data, descrizione e importo. Controlla che sia giusto prima di continuare. Per le banche che non conosco non confronto le commissioni e non calcolo interessi o costi: restano entrate, uscite, categorie e patrimonio.'))
+    const form=genEl('div','q-gen-form');card.appendChild(form)
+    const mk=(label,el)=>{const l=genEl('label',null);l.appendChild(genEl('span',null,label));l.appendChild(el);form.appendChild(l);return el}
+    const sel=(opts,val)=>{const s=document.createElement('select');opts.forEach(([v,t])=>{const o=document.createElement('option');o.value=String(v);o.textContent=t;s.appendChild(o)});s.value=String(val);return s}
+    const colOpts=(none)=>{const a=[];if(none)a.push([-1,'(nessuna)']);an.names.forEach((n,j)=>a.push([j,n.slice(0,40)||('Colonna '+(j+1))]));return a}
+    const bank=mk('Di che banca è il file?',sel(GEN_BANKS.concat(['Un\'altra (scrivi il nome)']).map(b=>[b,b]),'Altra banca'))
+    const other=genEl('input');other.type='text';other.maxLength=24;other.placeholder='Nome della banca';other.style.display='none'
+    form.appendChild(other)
+    bank.onchange=()=>{other.style.display=bank.value.startsWith('Un\'altra')?'':'none';refresh()}
+    const cD=mk('Colonna della data',sel(colOpts(false),an.cols.date))
+    const cX=mk('Colonna della descrizione',sel(colOpts(true),an.cols.desc))
+    const amtMode=mk('Gli importi sono in',sel([['one','una colonna sola (con il segno)'],['two','due colonne (uscite ed entrate)']],an.cols.amt>=0?'one':'two'))
+    const cA=mk('Colonna degli importi',sel(colOpts(false),an.cols.amt>=0?an.cols.amt:0))
+    const cU=mk('Colonna delle uscite',sel(colOpts(true),an.cols.debit))
+    const cE=mk('Colonna delle entrate',sel(colOpts(true),an.cols.credit))
+    const dm=mk('Le date sono scritte come',sel([['dmy','giorno/mese/anno (es. 31/12/2025)'],['mdy','mese/giorno/anno (es. 12/31/2025)']],an.mode==='mdy'?'mdy':'dmy'))
+    const dec=mk('I decimali degli importi sono separati da',sel([['auto','scelgo io (consigliato)'],['comma','virgola (es. 1.234,56)'],['dot','punto (es. 1,234.56)']],'auto'))
+    const flip=mk('Le uscite sono scritte come',sel([['no','numeri negativi (o in colonna uscite)'],['si','numeri positivi: inverti il segno']],'no'))
+    const note=genEl('p','q-gen-note');card.appendChild(note)
+    const prev=genEl('div','q-gen-prev');card.appendChild(prev)
+    const msg=genEl('p','q-gen-err');card.appendChild(msg)
+    const btns=genEl('div','q-gen-btns');card.appendChild(btns)
+    const ok=genEl('button','q-btn q-btn-p','Confermo, analizza');ok.type='button'
+    const no=genEl('button','q-btn','Annulla');no.type='button'
+    btns.appendChild(ok);btns.appendChild(no)
+    let cur=null
+    function refresh(){
+      const two=amtMode.value==='two'
+      cA.parentNode.style.display=two?'none':'';cU.parentNode.style.display=two?'':'none';cE.parentNode.style.display=two?'':'none'
+      dm.parentNode.style.display=an.mode==='dmy'||an.mode==='mdy'?'none':''
+      const label=bank.value.startsWith('Un\'altra')?genBankLabel(other.value):bank.value
+      const a2=Object.assign({},an,{cols:{date:+cD.value,desc:+cX.value,amt:two?-1:+cA.value,debit:two?+cU.value:-1,credit:two?+cE.value:-1}})
+      const res=genExtract(a2,{dateMode:dm.value,flip:flip.value==='si',dec:dec.value,source:'x_tmp'})
+      cur={res,label}
+      prev.textContent=''
+      msg.textContent=''
+      if(!res.ok){msg.textContent=res.reason;ok.disabled=true}
+      else{
+        ok.disabled=false
+        note.textContent=`Ho letto ${res.txs.length.toLocaleString('it-IT')} movimenti${res.bad?` (${res.bad} righe saltate perché non leggibili)`:''}: ${res.neg} uscite e ${res.pos} entrate.`+(res.pos===0||res.neg===0?' Attenzione: sono tutti dello stesso segno, controlla «Le uscite sono scritte come».':'')
+        const t=document.createElement('table');t.className='q-gen-tab'
+        const h=t.createTHead().insertRow();['Data','Descrizione','Importo'].forEach(x=>h.appendChild(genEl('th',null,x)))
+        const tb=t.createTBody()
+        res.txs.slice(0,5).forEach(x=>{const r=tb.insertRow();r.insertCell().textContent=x.date.toLocaleDateString('it-IT');r.insertCell().textContent=x.detail.slice(0,60);const c=r.insertCell();c.textContent=(x.amount<0?'−':'+')+Math.abs(x.amount).toLocaleString('it-IT',{minimumFractionDigits:2,maximumFractionDigits:2})+' €';c.className=x.amount<0?'neg':'pos'})
+        prev.appendChild(t)
+        prev.appendChild(genEl('p','q-gen-p',`Prime 5 righe su ${res.txs.length}. Intervallo: dal ${res.txs.reduce((m,x)=>x.date<m?x.date:m,res.txs[0].date).toLocaleDateString('it-IT')} al ${res.txs.reduce((m,x)=>x.date>m?x.date:m,res.txs[0].date).toLocaleDateString('it-IT')}.`))
+      }
+    }
+    ;[cD,cX,amtMode,cA,cU,cE,dm,dec,flip].forEach(e=>e.onchange=refresh)
+    other.oninput=refresh
+    ok.onclick=()=>{
+      if(!cur||!cur.res.ok)return
+      const key=genRegister(cur.label)
+      cur.res.txs.forEach(t=>{t.source=key})
+      close(cur.res.txs)
+    }
+    no.onclick=()=>close(null)
+    wrap.addEventListener('keydown',e=>{if(e.key==='Escape')close(null)})
+    document.body.appendChild(wrap);document.body.style.overflow='hidden';refresh();ok.focus()
+  })
+}
+
+// legge il file senza far interpretare le date: i CSV restano testo
+function genReadRaw(file){
+  return new Promise((res,rej)=>{
+    const reader=new FileReader()
+    reader.onload=e=>{
+      try{
+        const wb=XLSX.read(e.target.result,{type:'array',cellDates:true,raw:true,cellFormula:false,cellHTML:false,cellStyles:false,sheetRows:GEN_MAX_ROWS+2})
+        const ws=wb.Sheets[wb.SheetNames[0]]
+        res(XLSX.utils.sheet_to_json(ws,{header:1,raw:true,defval:null,blankrows:false}))
+      }catch(err){rej(err)}
+    }
+    reader.onerror=()=>rej(reader.error)
+    reader.readAsArrayBuffer(file)
+  })
+}
+async function genericFlow(file){
+  let rows
+  try{rows=await genReadRaw(file)}catch(e){rows=null}
+  if(!rows){track('errore_parsing',{formato:'illeggibile'});return null}
+  const r=await genFlow(file,rows)
+  track(r?'formato_generico_letto':'formato_generico_annullato')
+  return r
+}
+
 function txMore(n){window._txShown=(window._txShown||20)+n;renderTxTable(activeFilter)}
 function txLess(){window._txShown=20;renderTxTable(activeFilter);const t=document.getElementById('tx-count');if(t)t.scrollIntoView({block:'start',behavior:'smooth'})}
 function txClearCat(){catFilter.clear();renderTxTable(activeFilter)}
@@ -2527,6 +2857,8 @@ function renderOverview(d){
     const tot=internalTx.reduce((s,t)=>s+Math.abs(t.amount),0)/2
     note+=`<b>${internalTx.length} ${plu(internalTx.length,'movimento','movimenti')}</b> sono spostamenti tra i tuoi conti (circa ${fmt(tot)}) e non vengono contati come entrate o uscite. `
   }
+  const gk=keys.filter(k=>k.startsWith('x_'))
+  if(gk.length)note+=`Per <b>${listIt(gk.map(k=>esc(bn(k))))}</b> il formato non è tra quelli noti: ho letto data, descrizione e importo con la tua conferma. Per ${gk.length>1?'queste banche':'questa banca'} non confronto le commissioni e non calcolo interessi o costi. `
   if(pk.length)note+=`Mese ${pk.length>1?'parziali':'parziale'}: ${listIt(pk.map(k=>`<b>${ymName(k)}</b> (${part[k]})`))}. ${pk.length>1?'Sono esclusi':'È escluso'} dalle medie.`
   document.getElementById('ov-note').innerHTML=note
 }
@@ -4056,7 +4388,7 @@ async function runAnalysis(){
     for(const file of pendingFiles){
       const rows=await readFile(file)
       const fmt=detectFormat(rows)
-      if(fmt==='unknown'){track('errore_parsing',{formato:'sconosciuto'});clearInterval(timer);alert(`Formato non riconosciuto nel file "${file.name}".\n\nBanche supportate: Intesa Sanpaolo, Trade Republic, Revolut, UniCredit.`);show('upload-sec');return}
+      if(fmt==='unknown'||fmt==='generic'){clearInterval(timer);const g=await genericFlow(file);if(!g){track('errore_parsing',{formato:'sconosciuto'});show('upload-sec');return};parsed=parsed.concat(g);continue}
       const fn=fmt==='tr'?parseTR:fmt==='revolut'?parseRevolut:fmt==='unicredit'?parseUniCredit:parseIntesa
       parsed=parsed.concat(fn(rows))
     }
