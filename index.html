@@ -987,7 +987,8 @@ details.q-det>div{padding:0 1.2rem 1.1rem}
             <input type="number" step="100" id="sim-capital" oninput="this.dataset.touched='1';renderSimulation()">
             <em class="q-hint">Precompilato con quanto risulta già investito: il saldo investimenti che hai inserito più gli acquisti trovati nei movimenti. Puoi cambiarlo.</em></label>
           <label id="wrap-pac">PAC: quanto versi ogni mese (€)
-            <input type="number" step="10" id="sim-pac" value="650" oninput="renderSimulation()"></label>
+            <input type="number" step="10" min="0" id="sim-pac" value="0" oninput="this.dataset.touched='1';renderSimulation()">
+            <em class="q-hint" id="pac-hint"></em></label>
           <label>Per quanti anni
             <input type="number" step="1" min="1" max="40" id="sim-years" value="10" oninput="renderSimulation()"></label>
         </div>
@@ -3390,6 +3391,7 @@ function resetWealth(){
   Object.keys(wealthCash).forEach(k=>delete wealthCash[k]);Object.keys(wealthInvestStart).forEach(k=>delete wealthInvestStart[k])
   Object.keys(_wTouched).forEach(k=>delete _wTouched[k])
   const sc=document.getElementById('sim-capital');if(sc)delete sc.dataset.touched
+  const sp=document.getElementById('sim-pac');if(sp){delete sp.dataset.touched;delete sp.dataset.keep}
 }
 function renderPatrimonio(sources){
   const el=document.getElementById('wealth-summary');if(!el)return
@@ -3478,7 +3480,7 @@ function seekVid(t,id){
 }
 
 // ── Evidenza: di quanto puoi aumentare il PAC senza toccare la liquidità ──
-const _rs=renderSimulation;renderSimulation=function(){_rs.apply(this,arguments);pacCallout();simChips()}
+const _rs=renderSimulation;renderSimulation=function(){autoPac();_rs.apply(this,arguments);pacCallout();simChips()}
 let _simMode='mix'
 function setSimMode(m){
   _simMode=m
@@ -3547,6 +3549,28 @@ function famSuggestHTML(){
 }
 function markFamily(i){pickApply(allTx[i],'Aiuto familiare','👪');recomputeKeepView()}
 function setExclExtra(on){window._exclExtra=!!on;histAvg();renderSimulation()}
+// ── PAC precompilato: versamenti periodici in titoli trovati nei movimenti, altrimenti 0 ──
+function detectPac(){
+  const part=partialSet(),by={}
+  allTx.forEach(t=>{if(t.isInternal||t.catType!=='investment')return;const k=ymOf(t.date);if(part[k])return;by[k]=(by[k]||0)+Math.abs(t.amount)})
+  const ms=Object.keys(by).filter(k=>by[k]>0),vals=ms.map(k=>by[k])
+  let best=null
+  vals.forEach(v=>{ // mesi con importi simili (entro il 6%): se almeno 3, è un versamento periodico
+    const mem=vals.filter(x=>Math.abs(x-v)/v<=0.06)
+    if(mem.length>=3&&(!best||mem.length>best.length))best=mem
+  })
+  if(!best)return{pac:0,n:0,months:ms.length}
+  const srt=best.slice().sort((a,b)=>a-b),med=srt[Math.floor(srt.length/2)]
+  return{pac:Math.round(med/10)*10,n:best.length,months:ms.length}
+}
+function autoPac(){
+  const inp=document.getElementById('sim-pac');if(!inp||!allTx.length)return
+  const hint=document.getElementById('pac-hint')
+  if(inp.dataset.touched){if(hint)hint.textContent='Valore scelto da te.';return}
+  const d=detectPac()
+  if(inp.dataset.keep!==undefined)inp.dataset.keep=String(d.pac);else inp.value=String(d.pac)
+  if(hint)hint.textContent=d.pac>0?`Calcolato dai tuoi movimenti: acquisti di titoli simili (circa ${fmt(d.pac)}) in ${d.n} mesi. Puoi cambiarlo.`:'Non ho trovato versamenti periodici in titoli, quindi parte da 0: così vedi quanto potresti investire ogni mese. Puoi cambiarlo.'
+}
 function pacCallout(){
   const el=document.getElementById('sim-margin');if(!el)return
   if(_simMode==='lump'){el.innerHTML='';return}
@@ -3555,11 +3579,11 @@ function pacCallout(){
   const col=up?'var(--teal)':'var(--red)'
   const X=window._histExtra||{n:0,avg:0},ex=window._exclExtra&&X.n>0,xt=ex?', senza gli aiuti familiari':''
   el.innerHTML=`<div class="q-pac ${up?'':'neg'}">
-    <div class="q-pac-main"><div class="q-pac-k">${up?'Puoi aumentare il PAC di':'Il tuo PAC supera il risparmio di'}</div>
-    <div class="q-pac-n" style="color:${col}">${up?'+':''}${fmt(Math.abs(m))}<span>/mese</span></div></div>
+    <div class="q-pac-main"><div class="q-pac-k">${pac===0&&up?'Puoi investire ogni mese fino a':up?'Puoi aumentare il PAC di':pac===0?'In media ogni mese non ti resta nulla da investire':'Il tuo PAC supera il risparmio di'}</div>
+    <div class="q-pac-n" style="color:${col}">${pac===0&&up?'':up?'+':''}${pac===0&&!up?fmtSigned(avg):fmt(Math.abs(m))}<span>/mese</span></div></div>
     <div class="q-pac-t">${up
-      ?`Ogni mese ti restano in media <b>${fmtSigned(avg)}</b> (entrate meno uscite${xt}). Con un PAC di <b>${fmt(pac)}</b> hai ancora <b>${fmt(m)}</b> liberi: puoi investirli in più senza ridurre la tua liquidità.`
-      :`Ogni mese ti restano in media <b>${fmtSigned(avg)}</b> (entrate meno uscite${xt}), meno dei <b>${fmt(pac)}</b> del PAC. Per non intaccare la liquidità scendi di almeno <b>${fmt(Math.abs(m))}</b> al mese.`}</div></div>`+`<label class="q-pac-tg"><input type="checkbox" ${window._exclExtra?'checked':''} onchange="setExclExtra(this.checked)"><span>Escludi dal risparmio medio gli aiuti familiari <small>${X.n>0?`(${X.n} ${plu(X.n,'movimento segnato','movimenti segnati')}, entrate e uscite insieme: circa ${fmtSigned(X.avg)} al mese).`:'(nessun movimento segnato finora).'} Per segnarli apri la scheda Movimenti e scegli la categoria «👪 Aiuto familiare».</small></span></label>`+famSuggestHTML()
+      ?(pac===0?`Ogni mese ti restano in media <b>${fmtSigned(avg)}</b> (entrate meno uscite${xt}). Nei movimenti non ho trovato versamenti periodici in titoli: questa è la cifra massima che puoi investire ogni mese senza ridurre la tua liquidità. Se versi già qualcosa, scrivilo nel campo del PAC.`:`Ogni mese ti restano in media <b>${fmtSigned(avg)}</b> (entrate meno uscite${xt}). Con un PAC di <b>${fmt(pac)}</b> hai ancora <b>${fmt(m)}</b> liberi: puoi investirli in più senza ridurre la tua liquidità.`)
+      :pac===0?`Ogni mese ti restano in media <b>${fmtSigned(avg)}</b> (entrate meno uscite${xt}): spendi più di quanto entra, quindi non c'è margine per investire senza ridurre la liquidità.`:`Ogni mese ti restano in media <b>${fmtSigned(avg)}</b> (entrate meno uscite${xt}), meno dei <b>${fmt(pac)}</b> del PAC. Per non intaccare la liquidità scendi di almeno <b>${fmt(Math.abs(m))}</b> al mese.`}</div></div>`+`<label class="q-pac-tg"><input type="checkbox" ${window._exclExtra?'checked':''} onchange="setExclExtra(this.checked)"><span>Escludi dal risparmio medio gli aiuti familiari <small>${X.n>0?`(${X.n} ${plu(X.n,'movimento segnato','movimenti segnati')}, entrate e uscite insieme: circa ${fmtSigned(X.avg)} al mese).`:'(nessun movimento segnato finora).'} Per segnarli apri la scheda Movimenti e scegli la categoria «👪 Aiuto familiare».</small></span></label>`+famSuggestHTML()
 }
 
 // ── Feedback esterno + cancellazione dati ──
@@ -3642,7 +3666,7 @@ runDemo=function(){
       ins[0].value=DEMO_BAL[b].cash;ins[1].value=DEMO_BAL[b].inv
       setWealth(b,'cash',DEMO_BAL[b].cash);setWealth(b,'inv',DEMO_BAL[b].inv)
     })
-    const p=document.getElementById('sim-pac');if(p){p.value=300;renderSimulation()}
+    renderSimulation()
   },0)
 }
 
