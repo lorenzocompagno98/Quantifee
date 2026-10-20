@@ -2097,9 +2097,9 @@ function renderCharts(){
       if(fs<12){fs=12;const mx=Math.floor((rw-12)/(12*0.5))
         if(mx<4)showName=false
         else if(nm.length>mx){
-          const w=nm.split(' ');let a='',bb='';w.forEach((x,k)=>{if((a+' '+x).trim().length<=Math.max(mx,w[0].length)&&!bb)a=(a+' '+x).trim();else bb=(bb+' '+x).trim()})
+          const w=nm.replace(/ e /g,' e\u0001').split(' ');let a='',bb='';w.forEach((x,k)=>{if((a+' '+x).trim().length<=Math.max(mx,w[0].length)&&!bb)a=(a+' '+x).trim();else bb=(bb+' '+x).trim()})
           lines=bb?[a,bb]:[a]
-          lines=lines.map(x=>x.length>mx?x.slice(0,mx-1)+'…':x)
+          lines=lines.map(x=>x.replace(/\u0001/g,' ')).map(x=>x.length>mx?x.slice(0,mx-1)+'…':x)
           if(lines.length>1&&rh<fs*2.6+4)lines=[lines[0]]
         }}
       const amtT='€'+Math.round(r.value).toLocaleString('it-IT')+' · '+Math.round(r.value/totalExp*100)+'%',fa=Math.min(Math.max(11,fs*0.82),(rw-12)/(amtT.length*0.56)),nl=lines.length,showAmt=showName&&fa>=10&&rh>fs*nl+fa*2.1
@@ -3551,17 +3551,28 @@ function markFamily(i){pickApply(allTx[i],'Aiuto familiare','👪');recomputeKee
 function setExclExtra(on){window._exclExtra=!!on;histAvg();renderSimulation()}
 // ── PAC precompilato: versamenti periodici in titoli trovati nei movimenti, altrimenti 0 ──
 function detectPac(){
-  const part=partialSet(),by={}
-  allTx.forEach(t=>{if(t.isInternal||t.catType!=='investment')return;const k=ymOf(t.date);if(part[k])return;by[k]=(by[k]||0)+Math.abs(t.amount)})
-  const ms=Object.keys(by).filter(k=>by[k]>0),vals=ms.map(k=>by[k])
-  let best=null
-  vals.forEach(v=>{ // mesi con importi simili (entro il 6%): se almeno 3, è un versamento periodico
-    const mem=vals.filter(x=>Math.abs(x-v)/v<=0.06)
-    if(mem.length>=3&&(!best||mem.length>best.length))best=mem
-  })
-  if(!best)return{pac:0,n:0,months:ms.length}
-  const srt=best.slice().sort((a,b)=>a-b),med=srt[Math.floor(srt.length/2)]
-  return{pac:Math.round(med/10)*10,n:best.length,months:ms.length}
+  const part=partialSet(),day={}
+  allTx.forEach(t=>{if(t.isInternal||t.catType!=='investment')return;const ym=ymOf(t.date);if(part[ym])return;const k=t.date.toISOString().slice(0,10);day[k]=(day[k]||0)+Math.abs(t.amount)})
+  const sums=ds=>{const m={};Object.keys(ds).forEach(k=>{const ym=k.slice(0,7);m[ym]=(m[ym]||0)+ds[k]});return m}
+  // gruppi di mesi con importo simile (entro il 6%): serve almeno 3 mesi; vince il gruppo più recente, a parità il più grande
+  const cluster=m=>{
+    const ms=Object.keys(m).filter(k=>m[k]>0).sort();let best=null
+    ms.forEach(k=>{
+      const mem=ms.filter(x=>Math.abs(m[x]-m[k])/m[k]<=0.06)
+      if(mem.length<3)return
+      const last=mem[mem.length-1]
+      if(!best||last>best.last||(last===best.last&&mem.length>best.mem.length))best={mem,last}
+    });return best
+  }
+  const first=cluster(sums(day))
+  if(!first)return{pac:0,n:0,lumps:0}
+  // 1) livello provvisorio; 2) tolgo i giorni con acquisti straordinari (oltre una volta e mezza il livello)
+  const L0=first.mem.map(k=>sums(day)[k]).sort((a,b)=>a-b)[Math.floor(first.mem.length/2)]
+  const reg={},lumps=[];Object.keys(day).forEach(k=>{if(day[k]>1.5*L0)lumps.push(k);else reg[k]=day[k]})
+  const m2=sums(reg),c2=cluster(m2)||first,vals=c2===first?sums(day):m2
+  // 3) importo = mediana degli ultimi 3 mesi del gruppo
+  const last3=c2.mem.slice(-3).map(k=>vals[k]).sort((a,b)=>a-b),med=last3[Math.floor(last3.length/2)]
+  return{pac:Math.round(med/10)*10,n:last3.length,lumps:lumps.length}
 }
 function autoPac(){
   const inp=document.getElementById('sim-pac');if(!inp||!allTx.length)return
@@ -3569,7 +3580,7 @@ function autoPac(){
   if(inp.dataset.touched){if(hint)hint.textContent='Valore scelto da te.';return}
   const d=detectPac()
   if(inp.dataset.keep!==undefined)inp.dataset.keep=String(d.pac);else inp.value=String(d.pac)
-  if(hint)hint.textContent=d.pac>0?`Calcolato dai tuoi movimenti: acquisti di titoli simili (circa ${fmt(d.pac)}) in ${d.n} mesi. Puoi cambiarlo.`:'Non ho trovato versamenti periodici in titoli, quindi parte da 0: così vedi quanto potresti investire ogni mese. Puoi cambiarlo.'
+  if(hint)hint.textContent=d.pac>0?`Calcolato dai tuoi movimenti: media degli ultimi ${d.n} mesi con versamenti simili in titoli e fondi (circa ${fmt(d.pac)})${d.lumps?`, senza ${d.lumps} ${plu(d.lumps,'giorno','giorni')} con acquisti straordinari`:''}. Puoi cambiarlo.`:'Non ho trovato versamenti periodici in titoli, quindi parte da 0: così vedi quanto potresti investire ogni mese. Puoi cambiarlo.'
 }
 function pacCallout(){
   const el=document.getElementById('sim-margin');if(!el)return
@@ -3689,7 +3700,11 @@ Object.assign(CAT_MAP,{
 })
 Object.assign(TR_MCC,{
   '7999':{l:'Svago',i:'🎮'},'5945':{l:'Svago',i:'🧸'},
-  '7941':{l:'Sport',i:'🏋️'},'5941':{l:'Sport',i:'⚽'}
+  '7941':{l:'Sport',i:'🏋️'},'5941':{l:'Sport',i:'⚽'},
+  // codici commerciali standard (ISO 18245) che prima finivano in «Altro»
+  '4131':{l:'Trasporti',i:'🚌'},'5309':{l:'Shopping',i:'🛍️'},'5655':{l:'Shopping',i:'🛍️'},'5947':{l:'Shopping',i:'🎁'},
+  '5811':{l:'Ristoranti',i:'🍽️'},'5818':{l:'Svago',i:'🎮'},'7991':{l:'Svago',i:'🎟️'},
+  '7032':{l:'Sport',i:'🏄'},'7997':{l:'Sport',i:'🎾'},'7033':{l:'Viaggi/Booking',i:'🏕️'}
 })
 // etichette generiche: la regola base può sostituirle (le specifiche della banca no)
 const GENERIC_LABELS=new Set(['Altro','Altre uscite','Addebito vario','Altre entrate','Altro (carta TR)','Shopping','Bonifico in uscita','Bonifici ricevuti'])
@@ -3701,6 +3716,7 @@ const PICK_LIST=[
   ['Shopping','🛍️','expense'],['Salute e cura persona','💊','expense'],['Assicurazioni','🛡️','expense'],['Imposte e tasse','🏛️','expense'],
   ['Gioco','🎰','expense'],['Commissioni','💸','expense'],['Bonifico in uscita','💸','expense'],['Altro','💳','expense'],
   ['Stipendio','💰','income'],['Regali/Paghette','🎁','income'],['Aiuto familiare','👪','family'],['Poker/Scommesse','🎰','income'],['Rimborso','↩️','income'],
+  ['Interessi e dividendi','💶','income'],['Altre entrate','💶','income'],
   ['Investimento','📈','investment'],['Disinvestimento','📉','disinvestment'],
   ['Trasf. interno','🔄','internal']
 ]
@@ -3727,7 +3743,7 @@ const BASE_RULES=[
   ['Carburante','⛽',/\b(eni ?live|agip|q8|ip station|tamoil|esso|shell|total ?energies|carburant\w*|distributore|stazione di servizio|benzina|gasolio|keropetrol|api-ip)\b/],
   ['Trasporti','🚗',/\b(trenitalia|italo treno|nuovo trasporto viaggiatori|trenord|atm milano|atm|gtt|atac|flixbus|blablacar|uber|bolt|free ?now|share ?now|taxi|parcheggio|parking|autobus|metropolitana|traghetto|tirrenia|moby|grimaldi|snav|gnv|ztl)\b/],
   ['Auto','🔧',/\b(officina|gommista|carrozzeria|autolavaggio|revisione auto|bollo auto|aci|autoricambi)\b/],
-  ['Supermercato','🛒',/\b(coop|conad|esselunga|carrefour|lidl|eurospin|md|aldi|pam|penny market|iper|despar|eurospar|interspar|famila|bennet|tigros|unes|naturasi|iperal|migross|crai|sidis|todis|dok|supermercat\w*|alimentari|macelleria|pescheria|ortofrutta|panificio)\b/],
+  ['Supermercato','🛒',/\b(coop|conad|esselunga|carrefour|intermarche|spar|monoprix|auchan|leclerc|lidl|eurospin|md|aldi|pam|penny market|iper|despar|eurospar|interspar|famila|bennet|tigros|unes|naturasi|iperal|migross|crai|sidis|todis|dok|supermercat\w*|alimentari|macelleria|pescheria|ortofrutta|panificio)\b/],
   ['Ristoranti','🍽️',/\b(ristorante|trattoria|osteria|pizzeria|pizza|sushi|bar|caffe|caffetteria|pasticceria|gelateria|gelato|tavola calda|paninoteca|kebab|hamburger|burger|mcdonald\w*|kfc|starbucks|autogrill|spizzico|domino\w*|just ?eat|glovo|deliveroo|uber ?eats|foodinho|wagamama|poke|brasserie|agriturismo|pub|birreria|bistrot|bistro|rosticceria|cocktail)\b/],
   ['Spettacoli','🎭',/\b(cinema|uci cinemas|the space cinema|teatro|concerto|ticketone|ticketmaster|museo|mostra)\b/],
   ['Sport','🏋️',/\b(palestra|fitness|virgin active|mcfit|anytime fitness|decathlon|piscina|nuoto|tennis|padel|calcetto|yoga|pilates|crossfit|skipass|impianti di risalita)\b/],
@@ -3762,22 +3778,35 @@ function incomeRule(t){
 
 // ── raggruppamento in poche categorie: ogni banca usa nomi diversi per le stesse cose ──
 const MACRO_GROUPS={
-  'Casa e utenze':['Casa','Utenze','Telefonia','TV, Internet, telefono','Manutenzione casa','Elettrodomestici, arredamento e giardino','Casa/Elettrodomestici','Riscaldamento'],
-  'Supermercato':['Alimentari','Enoteca','Supermercati'],
+  'Casa e utenze':['Casa','Utenze','Telefonia','Internet','TV, Internet, telefono','Manutenzione casa','Elettrodomestici, arredamento e giardino','Casa/Elettrodomestici','Riscaldamento'],
+  'Supermercato':['Alimentari','Panetteria','Enoteca','Supermercati'],
   'Ristoranti e bar':['Ristoranti','Bar/Caffè','Fast food'],
-  'Trasporti e auto':['Trasporti','Trasporti, noleggi, taxi e parcheggi','Carburante','Auto','Pedaggi','Parcheggio'],
-  'Viaggi':['Voli','Viaggi/Booking','Autonoleggio'],
+  'Trasporti e auto':['Trasporti','Taxi','Trasporti, noleggi, taxi e parcheggi','Carburante','Auto','Pedaggi','Parcheggio'],
+  'Viaggi':['Voli','Hotel','Viaggi/Booking','Autonoleggio'],
   'Svago':['Spettacoli','Cinema/Teatro','Libri/Edicola','Libri, film e musica','Tempo libero varie','Abbonamenti','Software'],
-  'Shopping':['Abbigliamento','Regali','Tecnologia','Elettronica'],
+  'Shopping':['Abbigliamento','Calzature','Gioielleria','Grandi magazzini','Regali','Tecnologia','Elettronica'],
   'Salute e cura persona':['Salute','Spese mediche','Analisi mediche','Farmacia','Prodotti vista e udito','Cura persona'],
   'Altro':['Altro (carta TR)','Addebito vario','Altre uscite','Prelievi','Formazione','Associazioni']
 }
 const MACRO_MAP={};const MACRO_ICON={}
 PICK_LIST.forEach(([l,i])=>MACRO_ICON[l]=i)
 Object.keys(MACRO_GROUPS).forEach(m=>MACRO_GROUPS[m].forEach(f=>MACRO_MAP[f]=m))
+// etichette di entrate, investimenti e trasferimenti riportate a poche voci
+const MACRO_OTHER={'Acquisto ETF/titolo':'Investimento','Fondi comuni':'Investimento','Versamento su broker':'Investimento','Vendita ETF/titolo':'Disinvestimento',
+  'Interessi TR':'Interessi e dividendi','Interessi':'Interessi e dividendi','Interessi e cedole':'Interessi e dividendi','Dividendo':'Interessi e dividendi',
+  'Saveback TR':'Cashback/saveback','Rimborsi spese e storni':'Rimborso','Affitto incass.':'Altre entrate','Ricarica carta':'Trasferimento',
+  'TAX_OPTIMIZATION':'Imposte e tasse','STOCKPERK':'Altre entrate'}
+MACRO_ICON['Cashback/saveback']='🪙';MACRO_ICON['Trasferimento']='🔄'
+const EXP_CANON=new Set(PICK_LIST.filter(x=>x[2]==='expense').map(x=>x[0]).concat(['Aiuto familiare']))
 function applyMacro(tx){
-  if(tx.catType!=='expense'||!(tx.amount<0))return
-  const m=MACRO_MAP[tx.catLabel];if(m){tx.catLabel=m;tx.catIcon=MACRO_ICON[m]||tx.catIcon}
+  if(tx.catType==='expense'&&tx.amount<0){
+    let m=MACRO_MAP[tx.catLabel]
+    if(!m&&!EXP_CANON.has(tx.catLabel))m='Altro' // etichetta sconosciuta della banca: finisce in Altro, mai una categoria nuova
+    if(m){tx.catLabel=m;tx.catIcon=MACRO_ICON[m]||tx.catIcon}
+    return
+  }
+  const o=MACRO_OTHER[tx.catLabel];if(o){tx.catLabel=o;tx.catIcon=MACRO_ICON[o]||tx.catIcon;return}
+  if(/^[A-Z][A-Z0-9_]{3,}$/.test(tx.catLabel||'')){tx.catLabel=tx.amount>0?'Altre entrate':'Altro';tx.catIcon='💶'} // tipo di operazione grezzo di Trade Republic non previsto
 }
 
 // ── classificazione di un movimento ────────────────────────────────
